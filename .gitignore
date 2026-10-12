@@ -1,0 +1,9 @@
+node_modules/
+data/
+*.db
+*.db-*
+# Se publica sólo la demo de doble clic; la variante web se regenera con npm run build:demo
+dist/*
+!dist/gestion-escolar-demo.html
+# Presentación original de la propuesta (se mantiene fuera del repositorio)
+*.pptx

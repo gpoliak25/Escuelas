@@ -1,0 +1,16 @@
+{
+  "name": "gestion-escolar-morosidad",
+  "version": "0.1.0",
+  "description": "MVP de gestión escolar que anticipa la morosidad",
+  "private": true,
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "seed": "node --no-warnings src/seed.js",
+    "build:demo": "node --no-warnings scripts/build-demo.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  }
+}
