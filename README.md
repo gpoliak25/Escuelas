@@ -17,6 +17,8 @@ La primera vez se crea `data/escuela.db` con **64 familias ficticias** y un año
 
 Variables opcionales: `PORT` (puerto) y `DB_PATH` (ruta de la base).
 
+**Documentación:** [docs/documentacion-tecnica.html](docs/documentacion-tecnica.html) (arquitectura, modelo de datos, reglas, ML, API y pendientes para producción) y [docs/motor-predictivo.html](docs/motor-predictivo.html) (cálculo del puntaje de riesgo).
+
 ## Qué cubre de la presentación
 
 | Slide | En el MVP |

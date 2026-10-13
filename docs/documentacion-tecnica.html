@@ -1,0 +1,522 @@
+<title>Manual técnico Escuelas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ink: #12303B; --ink-2: #44565D; --ink-3: #6B7A80;
+    --bg: #F6F3EC; --surface: #FFFFFF; --surface-2: #FBF9F4;
+    --line: #E2DDD0; --line-2: #ECE7DA;
+    --brand: #1F6F66; --brand-bg: #E3F2EE;
+    --accent: #B7791F; --accent-bg: #FBF0DC;
+    --bad: #B8432C; --bad-bg: #F7E3DE;
+    --code-bg: #F1EDE3;
+    --get: #1F6F66; --post: #B7791F; --put: #44569A;
+    --dia-fill: #FFFFFF; --dia-fill-2: #E3F2EE; --dia-stroke: #C9C2B0;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #EDEAE2; --ink-2: #C3CBCD; --ink-3: #93A2A7;
+      --bg: #0E1E24; --surface: #15262D; --surface-2: #1A2E36;
+      --line: #2A4049; --line-2: #22363E;
+      --brand: #5FC2AE; --brand-bg: #143A35;
+      --accent: #E9A23B; --accent-bg: #3A3216;
+      --bad: #E8607A; --bad-bg: #3D2229;
+      --code-bg: #1F343C;
+      --get: #5FC2AE; --post: #E9A23B; --put: #9DB0F0;
+      --dia-fill: #15262D; --dia-fill-2: #143A35; --dia-stroke: #36515B;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #EDEAE2; --ink-2: #C3CBCD; --ink-3: #93A2A7;
+    --bg: #0E1E24; --surface: #15262D; --surface-2: #1A2E36;
+    --line: #2A4049; --line-2: #22363E;
+    --brand: #5FC2AE; --brand-bg: #143A35;
+    --accent: #E9A23B; --accent-bg: #3A3216;
+    --bad: #E8607A; --bad-bg: #3D2229;
+    --code-bg: #1F343C;
+    --get: #5FC2AE; --post: #E9A23B; --put: #9DB0F0;
+    --dia-fill: #15262D; --dia-fill-2: #143A35; --dia-stroke: #36515B;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  .layout { max-width: 1240px; margin: 0 auto; padding-inline: 20px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; }
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding-block: 40px 24px; font-size: 14px; }
+  nav.toc .t { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav.toc li { counter-increment: s; }
+  nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--ink-2); text-decoration: none; }
+  nav.toc a::before { content: counter(s) ". "; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  nav.toc a:hover { background: var(--surface); color: var(--ink); }
+  main { padding-block: 40px 80px; min-width: 0; }
+
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: .87em; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; }
+  pre { background: var(--code-bg); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 14px; line-height: 1.5; margin: 10px 0 14px; }
+  pre code { background: none; padding: 0; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin: 0 0 8px; }
+  h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; margin: 0 0 12px; letter-spacing: -.01em; text-wrap: balance; }
+  h2 { font-size: 26px; line-height: 1.25; margin: 64px 0 8px; padding-top: 8px; text-wrap: balance; scroll-margin-top: 16px; }
+  h2 .n { color: var(--ink-3); font-weight: 500; margin-right: 6px; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 18px; margin: 30px 0 8px; }
+  p, ul, ol { max-width: 76ch; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin: 0 0 4px; }
+  .lead { font-size: 18px; color: var(--ink-2); }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 14px; }
+  a { color: var(--brand); }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; font-size: 14px; color: var(--ink-3); }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 26px 0 0; }
+  .fact { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 14px 16px; }
+  .fact .k { font-size: 13px; color: var(--ink-3); }
+  .fact .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .fact .d { font-size: 13px; color: var(--ink-2); }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.nw { white-space: nowrap; }
+  td.r, th.r { text-align: right; }
+  .m { display: inline-block; min-width: 46px; font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 500; }
+  .m.get { color: var(--get); } .m.post { color: var(--post); } .m.put { color: var(--put); }
+
+  .note { background: var(--accent-bg); border-radius: 10px; padding: 12px 16px; margin: 14px 0; font-size: 15px; max-width: 76ch; }
+  .note.warn { background: var(--bad-bg); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+  .box { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 14px 16px; }
+  .box h3 { margin: 0 0 6px; font-size: 16px; }
+  .box p, .box ul { font-size: 15px; margin-bottom: 6px; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  figure { margin: 14px 0 18px; }
+  figure svg { width: 100%; height: auto; display: block; max-width: 920px; }
+  figcaption { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+  .dia text { font-family: "IBM Plex Sans", Arial, sans-serif; fill: var(--ink); }
+  .dia .sub { fill: var(--ink-3); font-size: 12px; }
+  .dia rect { fill: var(--dia-fill); stroke: var(--dia-stroke); }
+  .dia rect.hl { fill: var(--dia-fill-2); }
+  .dia path, .dia line { stroke: var(--ink-3); fill: none; }
+  .dia .arrow { fill: var(--ink-3); stroke: none; }
+  footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
+
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    nav.toc { position: static; max-height: none; padding-bottom: 0; }
+    nav.toc ol { columns: 2; }
+    .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    nav.toc ol { columns: 1; }
+    .facts, .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="layout">
+<nav class="toc" aria-label="Contenido">
+  <p class="t">Contenido</p>
+  <ol>
+    <li><a href="#inicio">Puesta en marcha</a></li>
+    <li><a href="#arquitectura">Arquitectura</a></li>
+    <li><a href="#archivos">Estructura del código</a></li>
+    <li><a href="#datos">Modelo de datos</a></li>
+    <li><a href="#cobranzas">Reglas de cobranza</a></li>
+    <li><a href="#bandeja">Bandeja y escalera</a></li>
+    <li><a href="#indicadores">Indicadores</a></li>
+    <li><a href="#reglas">Motor por reglas</a></li>
+    <li><a href="#ml">Inteligencia (ML)</a></li>
+    <li><a href="#escolar">Gestión escolar</a></li>
+    <li><a href="#api">Referencia de la API</a></li>
+    <li><a href="#portal">Portal y comprobantes</a></li>
+    <li><a href="#config">Configuración</a></li>
+    <li><a href="#demo">Datos y demo</a></li>
+    <li><a href="#tests">Tests</a></li>
+    <li><a href="#produccion">Para producción</a></li>
+  </ol>
+</nav>
+
+<main>
+  <p class="eyebrow">Gestión escolar y cobranzas · MVP</p>
+  <h1>Documentación técnica</h1>
+  <p class="lead">Sistema web para escuelas primarias que integra la gestión escolar, la cobranza y la anticipación de la morosidad con machine learning. Esta guía explica cómo está construido, qué reglas aplica y cómo extenderlo.</p>
+  <div class="meta">
+    <span><b>Repositorio:</b> github.com/gpoliak25/Escuelas</span>
+    <span><b>Rama:</b> main</span>
+    <span><b>Versión documentada:</b> octubre 2026</span>
+  </div>
+  <div class="facts">
+    <div class="fact"><div class="k">Dependencias externas</div><div class="v">0</div><div class="d">Node.js y SQLite integrado</div></div>
+    <div class="fact"><div class="k">Rutas de la API</div><div class="v">55</div><div class="d">JSON sobre HTTP</div></div>
+    <div class="fact"><div class="k">Tablas</div><div class="v">13</div><div class="d">SQLite, migración automática</div></div>
+    <div class="fact"><div class="k">Tests</div><div class="v">22</div><div class="d"><code>node:test</code></div></div>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="inicio"><span class="n">1</span>Puesta en marcha</h2>
+  <p>Requiere <b>Node.js 22.13 o superior</b>, que trae el módulo <code>node:sqlite</code>. No hay paquetes que instalar.</p>
+<pre><code>git clone https://github.com/gpoliak25/Escuelas
+cd Escuelas
+npm start            # http://localhost:3000 (administración) y /portal (familias)
+npm test             # 22 tests
+npm run seed         # recarga los datos de demostración
+npm run build:demo   # genera la demo de un solo archivo en dist/</code></pre>
+  <p>La primera vez que arranca con la base vacía, el servidor crea <code>data/escuela.db</code> y carga los datos de demostración. Variables opcionales: <code>PORT</code> (puerto, 3000 por defecto) y <code>DB_PATH</code> (ruta de la base; <code>:memory:</code> en los tests).</p>
+
+  <!-- 2 -->
+  <h2 id="arquitectura"><span class="n">2</span>Arquitectura</h2>
+  <p>Un único proceso de Node sirve la interfaz, la API JSON y los comprobantes imprimibles. La interfaz es una aplicación de una sola página en JavaScript sin frameworks, con rutas por hash (<code>#/familias/15</code>).</p>
+  <figure class="dia">
+    <svg viewBox="0 0 920 420" role="img" aria-label="Diagrama de capas: navegador, servidor, rutas, servicios y lectura, base SQLite">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <rect x="20" y="16" width="430" height="64" rx="10"/><text x="40" y="44" font-size="16" font-weight="600">Administración (SPA)</text><text class="sub" x="40" y="64">index.html · app.js · escolar.js · cobranzas.js · ml.js</text>
+      <rect x="470" y="16" width="430" height="64" rx="10"/><text x="490" y="44" font-size="16" font-weight="600">Portal de familias</text><text class="sub" x="490" y="64">portal.html · portal.js · acceso con código</text>
+      <line x1="235" y1="80" x2="235" y2="112" marker-end="url(#ar)"/><line x1="685" y1="80" x2="685" y2="112" marker-end="url(#ar)"/>
+      <rect class="hl" x="20" y="114" width="880" height="56" rx="10"/><text x="40" y="140" font-size="16" font-weight="600">server.js</text><text class="sub" x="40" y="158">HTTP · archivos estáticos · /recibos, /estado-cuenta, /libre-deuda (documentos.js) · /api/* → api.js</text>
+      <line x1="460" y1="170" x2="460" y2="200" marker-end="url(#ar)"/>
+      <rect x="20" y="202" width="880" height="48" rx="10"/><text x="40" y="231" font-size="16" font-weight="600">api.js</text><text class="sub" x="120" y="231">55 rutas · validación de entrada (validate.js) · errores HttpError → JSON</text>
+      <line x1="235" y1="250" x2="235" y2="280" marker-end="url(#ar)"/><line x1="685" y1="250" x2="685" y2="280" marker-end="url(#ar)"/>
+      <rect x="20" y="282" width="430" height="64" rx="10"/><text x="40" y="308" font-size="16" font-weight="600">Escritura</text><text class="sub" x="40" y="328">services.js · cobranzas.js · escolar.js</text>
+      <rect x="470" y="282" width="430" height="64" rx="10"/><text x="490" y="308" font-size="16" font-weight="600">Lectura y cálculo</text><text class="sub" x="490" y="328">domain.js (loadLedger) · risk.js · ml.js · stats.js</text>
+      <line x1="235" y1="346" x2="235" y2="372" marker-end="url(#ar)"/><line x1="685" y1="346" x2="685" y2="372" marker-end="url(#ar)"/>
+      <rect class="hl" x="20" y="374" width="880" height="40" rx="10"/><text x="40" y="399" font-size="16" font-weight="600">db.js · SQLite</text><text class="sub" x="160" y="399">esquema, migraciones, configuración, fechas · data/escuela.db</text>
+    </svg>
+    <figcaption>Capas del sistema. Las escrituras validan y usan transacciones; las lecturas cargan todo en memoria y calculan en JavaScript.</figcaption>
+  </figure>
+  <div class="grid2">
+    <div class="box"><h3>El "ledger" en memoria</h3><p><code>loadLedger(db)</code> (domain.js) lee todas las tablas una vez por pedido, arma un mapa por familia y calcula el estado, saldo y atraso de cada cuota, el riesgo, la deuda, el saldo a favor y las promesas. Para una escuela (cientos de familias) tarda decenas de milisegundos y simplifica toda la lógica.</p></div>
+    <div class="box"><h3>Fecha de referencia</h3><p><code>today(db)</code> devuelve la fecha real o la <b>fecha simulada</b> de Configuración. Con fecha simulada, los pagos, comunicaciones y eventos posteriores se ignoran al leer, para ver el sistema "como si hoy fuera" ese día.</p></div>
+    <div class="box"><h3>Caché del ML</h3><p><code>ml.js</code> guarda el resultado del entrenamiento y lo reutiliza mientras no cambie una firma de los datos (cantidad y último id de cada tabla, configuración y suma de cuotas). El primer cálculo tarda unos 200 ms y los siguientes, menos de 40 ms.</p></div>
+    <div class="box"><h3>Convenciones</h3><ul><li>Fechas ISO <code>AAAA-MM-DD</code>, aritmética en UTC.</li><li>Importes en pesos, redondeados a enteros.</li><li>Nombres de dominio en español.</li><li>Todo texto interpolado en el HTML se escapa (plantilla <code>h``</code>).</li></ul></div>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="archivos"><span class="n">3</span>Estructura del código</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Archivo</th><th>Responsabilidad</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>server.js</code></td><td>Servidor HTTP: estáticos de <code>public/</code>, comprobantes HTML y despacho de <code>/api/*</code>. Carga los datos de demo si la base está vacía.</td></tr>
+      <tr><td class="nw"><code>src/db.js</code></td><td>Esquema, migraciones (<code>migrate</code>), configuración por defecto, transacciones (<code>tx</code>) y utilidades de fecha.</td></tr>
+      <tr><td class="nw"><code>src/validate.js</code></td><td><code>HttpError</code> y validadores (<code>req</code>, <code>num</code>, <code>fecha</code>, <code>oneOf</code>).</td></tr>
+      <tr><td class="nw"><code>src/api.js</code></td><td>Tabla de rutas y adaptación de pedidos a servicios.</td></tr>
+      <tr><td class="nw"><code>src/services.js</code></td><td>Familias, generación de aranceles, cuota mensual (<code>desgloseCuota</code>, <code>montoFamilia</code>), planes de pago, comunicaciones y eventos.</td></tr>
+      <tr><td class="nw"><code>src/cobranzas.js</code></td><td>Cobros e imputación, saldo a favor, notas de crédito, rechazos, recargos, cargos, promesas y débito automático.</td></tr>
+      <tr><td class="nw"><code>src/domain.js</code></td><td><code>loadLedger</code>, estados de cuota, escalera de cobranza, tablero, cuenta corriente, deudores, caja y promesas.</td></tr>
+      <tr><td class="nw"><code>src/risk.js</code></td><td>Motor de riesgo por reglas (<code>scoreFamily</code>) y estado de una cuota a una fecha (<code>cuotaAt</code>).</td></tr>
+      <tr><td class="nw"><code>src/ml.js</code></td><td>Regresión logística, backtest, modelo de recupero, segmentación, priorización, proyección de caja, anomalías, riesgo de baja y datos del simulador.</td></tr>
+      <tr><td class="nw"><code>src/escolar.js</code></td><td>Alumnos (alta, edición, baja, reincorporación), cursos y asistencia.</td></tr>
+      <tr><td class="nw"><code>src/stats.js</code></td><td>Estadística descriptiva (medidas, frecuencias, histogramas, Pearson).</td></tr>
+      <tr><td class="nw"><code>src/documentos.js</code></td><td>Recibo / nota de crédito, estado de cuenta y certificado de libre deuda.</td></tr>
+      <tr><td class="nw"><code>src/seed.js</code></td><td>Datos de demostración deterministas y casos de ejemplo.</td></tr>
+      <tr><td class="nw"><code>public/</code></td><td>Interfaz: <code>app.js</code> (núcleo, tablero, bandeja, familias, cuotas, planes, configuración), <code>escolar.js</code>, <code>cobranzas.js</code>, <code>ml.js</code>, <code>styles.css</code> y el portal.</td></tr>
+      <tr><td class="nw"><code>scripts/build-demo.js</code></td><td>Genera <code>dist/gestion-escolar-demo.html</code> (ver sección 14).</td></tr>
+      <tr><td class="nw"><code>docs/</code></td><td>Esta documentación y la del puntaje de riesgo (<code>motor-predictivo.html</code>).</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- 4 -->
+  <h2 id="datos"><span class="n">4</span>Modelo de datos</h2>
+  <p>El esquema se crea con <code>CREATE TABLE IF NOT EXISTS</code> y las columnas agregadas en versiones posteriores se suman en <code>migrate()</code> con <code>ALTER TABLE</code>, así una base existente se actualiza sola al arrancar. Las claves foráneas están activadas.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tabla</th><th>Contenido</th><th>Claves y columnas relevantes</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>familias</code></td><td>Unidad de cobranza: responsable, contacto y medio de pago.</td><td><code>codigo_portal</code> único, <code>medio_pago</code>, <code>consentimiento</code>, <code>activa</code></td></tr>
+      <tr><td class="nw"><code>alumnos</code></td><td>Legajo del alumno.</td><td><code>familia_id</code>, <code>dni</code> (único si no está vacío), <code>grado</code>, <code>seccion</code>, <code>beca_pct</code>, <code>estado</code> (activo, baja, egresado), <code>activo</code> sincronizado</td></tr>
+      <tr><td class="nw"><code>cursos</code></td><td>Grado y sección con turno, docente y cupo.</td><td>único <code>(grado, seccion)</code>, <code>capacidad</code></td></tr>
+      <tr><td class="nw"><code>asistencia</code></td><td>Registro diario por alumno.</td><td>único <code>(alumno_id, fecha)</code>, <code>estado</code> (presente, ausente, tarde), <code>justificada</code></td></tr>
+      <tr><td class="nw"><code>cuotas</code></td><td>Todo lo que se le cobra a una familia.</td><td><code>tipo</code>: arancel, plan, cargo, recargo · único <code>(familia_id, periodo, concepto)</code> · <code>refinanciada_en</code> (plan que absorbió la deuda) · <code>plan_id</code>/<code>plan_nro</code> (cuota de un plan) · <code>origen_id</code> (cuota que generó un recargo)</td></tr>
+      <tr><td class="nw"><code>cobros</code></td><td>Recibos y notas de crédito.</td><td><code>tipo</code> (recibo, nota_credito), <code>numero</code> correlativo por tipo, <code>estado</code> (vigente, anulado, rechazado), <code>medio</code>, <code>motivo</code></td></tr>
+      <tr><td class="nw"><code>pagos</code></td><td>Imputación de una parte de un cobro a una cuota.</td><td><code>cobro_id</code>, <code>cuota_id</code>, <code>monto</code>, <code>rechazado</code> (débito rechazado)</td></tr>
+      <tr><td class="nw"><code>planes</code></td><td>Planes de pago acordados.</td><td><code>monto_total</code>, <code>cuotas_n</code>; el estado se calcula</td></tr>
+      <tr><td class="nw"><code>promesas</code></td><td>Compromisos de pago a corto plazo.</td><td><code>fecha_promesa</code>, <code>monto</code>, <code>anulada</code>; el estado se calcula</td></tr>
+      <tr><td class="nw"><code>comunicaciones</code></td><td>Contactos de la escalera de cobranza.</td><td><code>etapa</code>, <code>canal</code>, <code>estado</code> (enviada, omitida), <code>abierto</code>, <code>respondido</code></td></tr>
+      <tr><td class="nw"><code>eventos</code></td><td>Señales de la familia.</td><td><code>tipo</code>: consulta_saldo, solicitud_plan, cambio_medio, reclamo, pedido_pase · <code>atendido</code></td></tr>
+      <tr><td class="nw"><code>lotes_debito</code></td><td>Historial de lotes de débito procesados.</td><td><code>periodo</code>, aceptados, rechazados, monto</td></tr>
+      <tr><td class="nw"><code>settings</code></td><td>Configuración clave-valor.</td><td>ver sección 13</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>Cobro y pago no son lo mismo.</b> Un <i>cobro</i> es el dinero o crédito que ingresa (genera recibo). Un <i>pago</i> es cuánto de ese cobro se aplicó a cada cuota. Lo cobrado y no imputado es el <b>saldo a favor</b>: <code>cobro.monto − Σ pagos del cobro</code>. Al anular un cobro se borran sus pagos y la deuda vuelve a quedar pendiente. Los pagos anteriores a la existencia de recibos se vinculan solos a uno (<code>vincularPagosSinCobro</code>).</div>
+
+  <h3>Estado de una cuota</h3>
+  <p>Se calcula en <code>loadLedger</code> con <code>cuotaAt</code> (risk.js): <b>pagada</b> si los pagos no rechazados cubren el monto; <b>refinanciada</b> si pasó a un plan; <b>vencida</b> si el vencimiento es anterior a hoy; <b>pendiente</b> en otro caso. El <b>atraso</b> son los días entre el vencimiento y el pago que completó el monto (o hoy, si sigue impaga), nunca negativo.</p>
+
+  <!-- 5 -->
+  <h2 id="cobranzas"><span class="n">5</span>Reglas de cobranza</h2>
+  <h3>Cuota mensual</h3>
+  <p><code>desgloseCuota</code> (services.js): los alumnos activos se ordenan por grado; cada uno paga <code>arancel × (1 − beca%) × (1 − descuento por hermano%)</code>, y el descuento por hermano se aplica del segundo alumno en adelante. La cuota familiar (<code>montoFamilia</code>) es la suma, así el detalle y el total siempre coinciden.</p>
+  <h3>Generación de aranceles</h3>
+  <p><code>generarCuotas(periodo)</code> crea una cuota por familia activa con vencimiento el día configurado (1 a 28). Es idempotente (<code>INSERT OR IGNORE</code>) y, al terminar, aplica los saldos a favor a las cuotas nuevas.</p>
+  <h3>Imputación de cobros</h3>
+  <ul>
+    <li>Los cargos abiertos se ordenan por vencimiento; un recargo se ordena con la fecha de la cuota que lo originó, justo después de ella (<code>cargosAbiertos</code>).</li>
+    <li>Automática: se recorre esa lista hasta agotar el importe. Manual: sólo los cargos elegidos, en ese orden. El excedente queda como saldo a favor.</li>
+    <li>El botón "Cobrar" de una cuota (y el portal) usan modo estricto: no admiten pagar más que el saldo.</li>
+    <li>Los recibos se numeran <code>punto de venta-número</code> (<code>0001-00001234</code>); las notas de crédito tienen su propia numeración (<code>NC 0001-…</code>). Los débitos rechazados se registran sin número.</li>
+  </ul>
+  <h3>Recargos por mora</h3>
+  <p><code>liquidarRecargos</code> (cobranzas.js) recorre aranceles, cuotas de plan y cargos vencidos, no refinanciados, con saldo:</p>
+<pre><code>dias        = hoy − vencimiento
+si dias &gt; gracia:
+  recargos que corresponden = floor((dias − gracia − 1) / 30) + 1
+  cada recargo faltante k   = round(saldo × pct / 100)
+  vence                     = vencimiento + gracia + 1 + 30 × (k − 1)
+  concepto                  = "Recargo por mora k · &lt;concepto&gt;"</code></pre>
+  <p>Es idempotente: cuenta los recargos ya creados para esa cuota y sólo agrega los faltantes. Se condonan con una nota de crédito por el saldo del recargo (<code>condonar</code>).</p>
+  <h3>Planes de pago</h3>
+  <p><code>crearPlan</code> refinancia los cargos vencidos (opcionalmente también los por vencer) en <i>n</i> cuotas mensuales (1 a 24); la última absorbe el redondeo. Opcionalmente condona antes los recargos. Estado calculado: <b>cumplido</b> si todas las cuotas del plan están pagas; <b>incumplido</b> si alguna lleva más de 30 días vencida o se refinanció en otro plan; <b>activo</b> en otro caso.</p>
+  <h3>Promesas de pago</h3>
+  <p>Fecha entre hoy y 90 días. Se considera <b>cumplida</b> si entre el registro y la fecha prometida más 2 días se cobró al menos el monto; <b>incumplida</b> si ese plazo pasó sin el cobro; <b>vigente</b> en otro caso. Mientras está vigente, la familia sale de la bandeja.</p>
+  <h3>Débito automático</h3>
+  <p><code>loteDebito(periodo)</code> lista los aranceles con saldo de las familias adheridas. <code>procesarLote</code> registra, en una sola transacción, un recibo por cada acreditado y un rechazo (sin número, con motivo) por cada rechazado, y guarda el lote en <code>lotes_debito</code>.</p>
+
+  <!-- 6 -->
+  <h2 id="bandeja"><span class="n">6</span>Bandeja y escalera de cobranza</h2>
+  <p><code>accionesPendientes</code> (domain.js) propone, por familia, una sola acción para hoy: la de la etapa más avanzada que todavía no se hizo.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Etapa</th><th>Cuándo</th><th>Canal sugerido</th></tr></thead>
+    <tbody>
+      <tr><td>Prevención</td><td>Antes del vencimiento, según el nivel de riesgo: bajo 3 días, medio 7, alto 10</td><td>Bajo: mail · Medio: WhatsApp · Alto: llamada</td></tr>
+      <tr><td>Vencimiento</td><td>Día 0 a 4 de atraso de la cuota más antigua</td><td>Mail (riesgo bajo) o WhatsApp</td></tr>
+      <tr><td>Contacto</td><td>Desde 5 días</td><td>WhatsApp</td></tr>
+      <tr><td>Plan de pagos</td><td>Desde 15 días</td><td>Llamada</td></tr>
+      <tr><td>Reunión</td><td>Desde 30 días</td><td>Reunión con dirección</td></tr>
+      <tr><td>Promesa incumplida</td><td>Promesa vencida sin seguimiento posterior</td><td>Llamada</td></tr>
+    </tbody>
+  </table></div>
+  <p>Una etapa se considera hecha si existe una comunicación de esa etapa o una posterior desde el vencimiento de la cuota más antigua impaga. Registrar u omitir una acción crea esa comunicación (las omitidas quedan con <code>estado = omitida</code>, para dejar constancia de la decisión humana). Las familias con promesa vigente no aparecen.</p>
+
+  <!-- 7 -->
+  <h2 id="indicadores"><span class="n">7</span>Indicadores</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Indicador</th><th>Cálculo</th><th>Función</th></tr></thead>
+    <tbody>
+      <tr><td>Tasa de morosidad</td><td>De lo facturado en aranceles con vencimiento en los últimos 12 meses, la parte con más de 30 días de atraso (pagada tarde, refinanciada o impaga).</td><td class="nw"><code>dashboard</code></td></tr>
+      <tr><td>Días de atraso promedio</td><td>Promedio del atraso de los aranceles pagados en los últimos 6 meses.</td><td class="nw"><code>dashboard</code></td></tr>
+      <tr><td>Cartera en riesgo</td><td>Deuda vencida más próxima cuota de las familias en riesgo alto.</td><td class="nw"><code>dashboard</code></td></tr>
+      <tr><td>Recupero por etapa</td><td>Cuotas cobradas fuera de término en 12 meses, atribuidas a la última etapa de la escalera ejecutada antes del pago.</td><td class="nw"><code>recuperoPorEtapa</code></td></tr>
+      <tr><td>Precisión de alertas</td><td>Backtest de 6 meses: de las cuotas con riesgo alto calculado 10 días antes del vencimiento, cuántas se atrasaron más de 10 días.</td><td class="nw"><code>precisionAlertas</code></td></tr>
+      <tr><td>Planes cumplidos</td><td>Cumplidos sobre planes finalizados (cumplidos más incumplidos).</td><td class="nw"><code>dashboard</code></td></tr>
+      <tr><td>Efectividad del período</td><td>Del último período de aranceles ya vencido, lo cobrado sobre lo facturado.</td><td class="nw"><code>gestionCobranza</code></td></tr>
+      <tr><td>Deudores por antigüedad</td><td>Saldo vencido por tramos (1–30, 31–60, 61–90, más de 90 días desde el vencimiento de cada cargo), con el detalle de cada tramo.</td><td class="nw"><code>deudores</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- 8 -->
+  <h2 id="reglas"><span class="n">8</span>Motor por reglas</h2>
+  <p><code>scoreFamily</code> (risk.js) suma siete señales con máximos 40 + 25 + 10 + 20 + 10 + 10 + 5 = 120 y corta el total en 100: historial de pagos, deuda vencida actual, momento del pago, medio de pago, vínculo con la escuela, uso del portal y estacionalidad. El nivel es alto desde 50 y medio desde 25 (configurables); el motivo principal es la señal con más puntos.</p>
+  <p>El detalle de cada regla, los topes y dos ejemplos calculados paso a paso están en <b>docs/motor-predictivo.html</b>.</p>
+
+  <!-- 9 -->
+  <h2 id="ml"><span class="n">9</span>Inteligencia de cobranza (ML)</h2>
+  <p>Todo vive en <code>src/ml.js</code> y se expone en <code>GET /api/ml</code> (pantalla Inteligencia) y <code>GET /api/ml/familia/:id</code> (ficha y bandeja). No usa librerías externas.</p>
+  <h3>Variables del modelo</h3>
+  <p>Trece variables, calculadas con <code>features(familia, fecha, vencimiento)</code> sólo con datos conocidos a esa fecha: atraso promedio de las últimas 6 cuotas, proporción con más de 10 días, cuotas vencidas impagas, antigüedad de la deuda, empeoramiento reciente (últimas 3 contra las 3 anteriores), débitos rechazados (180 días), avisos sin abrir (90 días), consultas de saldo sin pago (60 días), mes de alto gasto, cantidad de hijos, cuotas extra pendientes, adhesión al débito y antigüedad. Ninguna es un dato sensible.</p>
+  <h3>Modelo de riesgo</h3>
+  <ul>
+    <li><b>Algoritmo:</b> regresión logística entrenada con descenso por gradiente (800 iteraciones, tasa 0,5, regularización L2 0,02) sobre variables estandarizadas.</li>
+    <li><b>Datos de entrenamiento:</b> cada arancel con resultado conocido; las variables se toman 10 días antes del vencimiento y la etiqueta es 1 si se pagó con más de 10 días de atraso (o seguía impago).</li>
+    <li><b>Validación:</b> backtest temporal. Se entrena con las cuotas anteriores a los últimos 6 meses y se mide con esos 6 meses. Se informa el AUC, la precisión y la cobertura con la misma cantidad de alertas que las reglas, para comparar de igual a igual. Con los datos de demo da AUC 0,93 contra 0,89 de las reglas.</li>
+    <li><b>Explicación:</b> los motivos de cada familia son las variables con mayor contribución positiva (peso × valor estandarizado).</li>
+    <li><b>Uso:</b> para las predicciones actuales el modelo se reentrena con toda la historia.</li>
+  </ul>
+  <h3>Modelo de recupero</h3>
+  <p>Misma técnica sobre episodios de deuda: cada cuota impaga al quinto día de atraso, con etiqueta 1 si se pagó antes del día 35. Estima la probabilidad de cobrar la deuda de una familia en los próximos 30 días. Necesita al menos 30 episodios con ambos resultados; si no, se usa un valor por defecto.</p>
+  <h3>Segmentación</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Segmento</th><th>Regla (últimos 12 meses)</th><th>Estrategia</th></tr></thead>
+    <tbody>
+      <tr><td>Riesgo de deuda crónica</td><td>3 o más cuotas vencidas, o atraso promedio de las últimas 6 mayor a 30 días, o alguna con más de 60.</td><td>Gestión personal y dirección; plan con seguimiento.</td></tr>
+      <tr><td>Dificultad transitoria</td><td>Al menos 6 cuotas; atraso promedio previo de 5 días o menos y, en las últimas 3, más de 10 o deuda vencida.</td><td>Llamado y plan de pagos temprano.</td></tr>
+      <tr><td>Tardío recurrente</td><td>30% o más de las cuotas con más de 3 días de atraso. Es <i>estacional</i> si al menos el 75% de esos atrasos cae en marzo, julio o diciembre.</td><td>Aviso anticipado por WhatsApp y débito automático.</td></tr>
+      <tr><td>Pagador puntual</td><td>El resto (también las familias con menos de 3 cuotas).</td><td>Recordatorio simple por mail.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Priorización, caja, anomalías, bajas y escenarios</h3>
+  <div class="grid2">
+    <div class="box"><h3>Priorización</h3><p>Ranking de hasta 20 familias por valor esperado. Con deuda: <code>deuda × probabilidad de recupero</code>. Al día: <code>próxima cuota × probabilidad de atraso</code>, si esa probabilidad es de 10% o más. Excluye familias con promesa vigente.</p></div>
+    <div class="box"><h3>Flujo de caja</h3><p>Patrón de cobro por segmento (12 meses): qué parte del arancel entra en el mes, al mes siguiente o más tarde. Se proyectan los próximos 3 meses con esas proporciones, los aranceles todavía no generados y el recupero de deuda vieja según el modelo.</p></div>
+    <div class="box"><h3>Anomalías</h3><ul><li>Pagó en término sus últimas 6 cuotas y la última se atrasó más de 3 días.</li><li>La probabilidad subió 30 puntos o más en 3 meses y supera 45%.</li><li>Arancel reciente distinto del esperado según alumnos, becas y descuentos.</li><li>Dos recibos iguales (misma familia, día, importe y medio).</li></ul></div>
+    <div class="box"><h3>Riesgo de baja</h3><p>Suma: cuotas vencidas (1: 10, 2: 20, 3 o más: 35), asistencia de 30 días (&lt;85%: 20, &lt;90%: 10), reclamos de 90 días (15 c/u, tope 30), pedido de pase en 120 días (30), hermano dado de baja en el año (10), promesa incumplida (5). Alto desde 50, medio desde 25. Uso exclusivo de dirección; no entra en el puntaje de cobranza.</p></div>
+  </div>
+  <div class="box"><h3>Simulador de escenarios</h3><p>Se calcula en el navegador con datos por segmento (<code>simulacion.segmentos</code>). Por cada 10% de aumento suma <i>s</i> puntos de impago al segmento (supuestos editables; con aumento en dos tramos el efecto se multiplica por 0,6). El plan temprano reduce el impago de "dificultad transitoria" en un porcentaje; el descuento por pago anticipado lo toma una fracción de puntuales y tardíos, que pasan a pagar en término, a cambio del costo del descuento. Horizonte: 10 cuotas.</p></div>
+  <div class="note"><b>Calibración pendiente.</b> Los resultados actuales salen de datos ficticios. Con datos reales el sistema reentrena solo, pero los supuestos del simulador y los umbrales deben revisarse con la dirección.</div>
+
+  <!-- 10 -->
+  <h2 id="escolar"><span class="n">10</span>Gestión escolar</h2>
+  <div class="grid2">
+    <div class="box"><h3>Alumnos</h3><ul><li>DNI de 7 u 8 dígitos, único.</li><li>Edad entre 4 y 16 años; fecha de ingreso no futura.</li><li>Alta, cambio de curso y reincorporación verifican el cupo.</li><li>Baja con fecha y motivo; "Egreso" deja el estado <code>egresado</code>.</li><li>El alta puede crear la familia en el mismo paso.</li></ul></div>
+    <div class="box"><h3>Cursos y asistencia</h3><ul><li>El cupo no puede quedar por debajo de los inscriptos.</li><li>La asistencia no admite fechas futuras ni fines de semana, y sólo alumnos activos del curso.</li><li>Se guarda con <i>upsert</i>: corregir un día no duplica.</li><li>"Justificada" sólo aplica a ausentes.</li></ul></div>
+  </div>
+  <p>Las estadísticas (<code>stats.js</code>) calculan media, mediana, moda, desvío muestral, coeficiente de variación, cuartiles por interpolación lineal y asimetría de Fisher; además tablas de frecuencia, histogramas y la correlación de Pearson entre el puntaje calculado antes del vencimiento y el atraso real.</p>
+
+  <!-- 11 -->
+  <h2 id="api"><span class="n">11</span>Referencia de la API</h2>
+  <p>JSON sobre HTTP. Los errores de validación responden con su código (400, 401, 403, 404, 409) y <code>{ "error": "mensaje" }</code>; los errores no previstos, con 500 y un mensaje genérico (el detalle queda en la consola del servidor). El cuerpo máximo es de 1 MB. Los <code>:id</code> son numéricos.</p>
+  <h3>Tablero, bandeja e inteligencia</h3>
+  <div class="table-wrap"><table><tbody>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/dashboard</code></td><td>Indicadores, serie mensual, riesgo de la cartera y gestión del mes.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/acciones</code></td><td>Acciones sugeridas para hoy, con segmento de cada familia.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/acciones</code></td><td>Registra (u omite) una acción de la bandeja.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/ml</code></td><td>Modelo, segmentos, priorización, caja, anomalías, bajas y datos del simulador.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/ml/familia/:id</code></td><td>Probabilidad, motivos, segmento y recupero de una familia.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/riesgo</code></td><td>Motor por reglas: señales, puntajes y backtest.</td></tr>
+  </tbody></table></div>
+  <h3>Familias y alumnos</h3>
+  <div class="table-wrap"><table><tbody>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/familias</code></td><td>Listado; filtros <code>q</code>, <code>nivel</code>, <code>estado</code> (deuda, inactivas).</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/familias</code></td><td>Crea una familia (con alumnos opcionales).</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/familias/:id</code></td><td>Ficha completa: cuotas, cobros, cuenta corriente, cuota por alumno, riesgo, promesas.</td></tr>
+    <tr><td class="nw"><span class="m put">PUT</span><code>/api/familias/:id</code></td><td>Edita datos; un cambio de medio de pago queda registrado.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/familias/opciones</code></td><td>Lista liviana para selectores.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/familias/:id/alumnos</code></td><td>Agrega un alumno a la familia.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/familias/:id/eventos</code></td><td>Registra un reclamo o pedido de pase.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/familias/:id/aplicar-saldo</code></td><td>Aplica el saldo a favor a los cargos abiertos.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/alumnos</code></td><td>Alumnos, cursos y motivos de baja.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/alumnos</code></td><td>Alta en familia existente (<code>familia_id</code>) o nueva (<code>familia</code>).</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/alumnos/:id</code></td><td>Ficha del alumno con asistencia y cuota mensual.</td></tr>
+    <tr><td class="nw"><span class="m put">PUT</span><code>/api/alumnos/:id</code></td><td>Edita datos o cambia de curso.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/alumnos/:id/baja</code></td><td>Baja con fecha y motivo.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/alumnos/:id/reincorporar</code></td><td>Reincorpora si hay cupo.</td></tr>
+  </tbody></table></div>
+  <h3>Cursos, asistencia y estadísticas</h3>
+  <div class="table-wrap"><table><tbody>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/cursos</code></td><td>Cursos con ocupación y asistencia.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cursos</code></td><td>Crea un curso.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/cursos/:id</code></td><td>Detalle y asistencia de un día (<code>?fecha=</code>).</td></tr>
+    <tr><td class="nw"><span class="m put">PUT</span><code>/api/cursos/:id</code></td><td>Turno, docente y cupo.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cursos/:id/asistencia</code></td><td>Guarda la asistencia del día.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/estadisticas</code></td><td>Estadística descriptiva completa.</td></tr>
+  </tbody></table></div>
+  <h3>Cuotas, cobros y cobranza</h3>
+  <div class="table-wrap"><table><tbody>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/cuotas</code></td><td>Cuotas de un período y tipo (<code>?tipo=&amp;periodo=</code>).</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cuotas/generar</code></td><td>Genera los aranceles de un período.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cargos</code></td><td>Cargo a una familia o masivo (por familia o por alumno).</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cobros</code></td><td>Recibo o nota de crédito, con imputación automática o manual.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/cobros/:id/anular</code></td><td>Anula un comprobante con motivo.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/pagos</code></td><td>Pago de una cuota puntual (modo estricto).</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/rechazos</code></td><td>Registra un débito rechazado.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/condonaciones</code></td><td>Nota de crédito por el saldo de los cargos elegidos.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/recargos</code></td><td>Simula cuántos recargos faltan liquidar.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/recargos/liquidar</code></td><td>Liquida los recargos pendientes.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/caja</code></td><td>Comprobantes por período y medio (<code>?desde=&amp;hasta=&amp;medio=</code>).</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/deudores</code></td><td>Deudores por antigüedad, con detalle por cargo.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/debitos</code></td><td>Lote de débito de un período e historial.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/debitos/procesar</code></td><td>Registra el resultado del lote.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/planes</code></td><td>Planes, pedidos del portal y promesas.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/planes</code></td><td>Crea un plan de pagos.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/promesas</code></td><td>Registra una promesa de pago.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/promesas/:id/anular</code></td><td>Anula una promesa.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/eventos/:id/atender</code></td><td>Marca un pedido como atendido.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/comunicaciones</code></td><td>Registra un contacto manual.</td></tr>
+    <tr><td class="nw"><span class="m put">PUT</span><code>/api/comunicaciones/:id</code></td><td>Marca un aviso como abierto o respondido.</td></tr>
+  </tbody></table></div>
+  <h3>Configuración y portal</h3>
+  <div class="table-wrap"><table><tbody>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/config</code></td><td>Parámetros y fecha de referencia.</td></tr>
+    <tr><td class="nw"><span class="m put">PUT</span><code>/api/config</code></td><td>Actualiza parámetros, con validación.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/demo/reset</code></td><td>Borra todo y recarga los datos de demo.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/portal/login</code></td><td>Valida el código de portal.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/portal/estado</code></td><td>Estado de cuenta de la familia (encabezado <code>X-Portal-Code</code>).</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/portal/pagar</code></td><td>Pago online simulado de las cuotas elegidas.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/portal/solicitar-plan</code></td><td>Pedido de plan de pagos.</td></tr>
+    <tr><td class="nw"><span class="m post">POST</span><code>/api/portal/debito</code></td><td>Adhesión al débito automático.</td></tr>
+  </tbody></table></div>
+
+  <!-- 12 -->
+  <h2 id="portal"><span class="n">12</span>Portal de familias y comprobantes</h2>
+  <p>El portal (<code>/portal</code>) muestra el estado de cuenta, permite pagar online (simulado), ver los recibos, pedir un plan y adherir al débito. La familia entra con su código de portal, que viaja en el encabezado <code>X-Portal-Code</code>. Cada ingreso registra una consulta de saldo (señal del motor de riesgo).</p>
+  <p>Comprobantes imprimibles, generados en el servidor: <code>/recibos/:id</code> (recibo o nota de crédito; los anulados se marcan), <code>/estado-cuenta/:familiaId</code> y <code>/libre-deuda/:familiaId</code> (responde 409 si hay deuda vencida).</p>
+  <div class="note warn"><b>Seguridad:</b> en el MVP la administración no tiene login y los comprobantes son accesibles por id. El código de portal es un control mínimo. Ver sección 16.</div>
+
+  <!-- 13 -->
+  <h2 id="config"><span class="n">13</span>Configuración</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Clave</th><th>Por defecto</th><th>Uso y validación</th></tr></thead>
+    <tbody>
+      <tr><td><code>escuela_nombre</code></td><td>Escuela Primaria Modelo</td><td>Encabezados, mensajes y comprobantes.</td></tr>
+      <tr><td><code>arancel_mensual</code></td><td class="r">185000</td><td>Arancel por alumno.</td></tr>
+      <tr><td><code>descuento_hermano_pct</code></td><td class="r">10</td><td>Descuento del segundo hijo en adelante.</td></tr>
+      <tr><td><code>dia_vencimiento</code></td><td class="r">15</td><td>Día de vencimiento de los aranceles (1 a 28).</td></tr>
+      <tr><td><code>umbral_medio</code> / <code>umbral_alto</code></td><td class="r">25 / 50</td><td>Niveles del motor por reglas; medio debe ser menor que alto.</td></tr>
+      <tr><td><code>recargo_activo</code></td><td class="r">1</td><td>Activa los recargos por mora.</td></tr>
+      <tr><td><code>recargo_pct</code></td><td class="r">3</td><td>Recargo mensual sobre el saldo (0 a 20).</td></tr>
+      <tr><td><code>recargo_dias_gracia</code></td><td class="r">5</td><td>Días sin recargo después del vencimiento (0 a 60).</td></tr>
+      <tr><td><code>punto_venta</code></td><td>0001</td><td>Prefijo de los comprobantes (hasta 5 dígitos).</td></tr>
+      <tr><td><code>fecha_simulada</code></td><td>(vacío)</td><td>Fecha de referencia para demos; vacío = fecha real.</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- 14 -->
+  <h2 id="demo"><span class="n">14</span>Datos de demostración y demo HTML</h2>
+  <h3>Datos de demostración</h3>
+  <p><code>seed(db)</code> borra y recarga 64 familias ficticias con un año y medio de historia relativa a la fecha actual. Es determinista: usa un generador pseudoaleatorio con semilla fija (una para la historia de pagos y otra para los datos escolares).</p>
+  <ul>
+    <li>Perfiles de pago: 32 puntuales, 11 de pago justo, 11 de atraso corto, 6 morosos y 4 que empeoran.</li>
+    <li>Cursos de 1° a 7° (1° a 3° con dos secciones), asistencia de 60 días hábiles, 4 bajas en el ciclo.</li>
+    <li>Recibos de todos los pagos, recargos liquidados, promesas vigente / incumplida / cumplida y un adelanto con saldo a favor.</li>
+    <li>Casos para el ML (<code>inyectarCasos</code>): tardío estacional, puntual con 3 hijos que se atrasa por primera vez, arancel sin descuento por hermano, cobro duplicado, familia con deuda, faltas y reclamo, y un pedido de pase.</li>
+  </ul>
+  <h3>Demo de un solo archivo</h3>
+  <p><code>scripts/build-demo.js</code> genera <code>dist/gestion-escolar-demo.html</code>: siembra una base en memoria, precalcula unas 500 respuestas de la API y las incrusta en la página junto con el CSS y el JavaScript. Un reemplazo de <code>window.fetch</code> responde los GET desde esos datos y rechaza las escrituras con un aviso. También genera <code>gestion-escolar-web.html</code>, la variante para publicar como página web (sin descargas de CSV). Después de cambiar la interfaz o la API hay que volver a correr <code>npm run build:demo</code>.</p>
+
+  <!-- 15 -->
+  <h2 id="tests"><span class="n">15</span>Tests</h2>
+  <p><code>npm test</code> corre <code>test/mvp.test.js</code> con <code>node:test</code>, sobre una base en memoria recién sembrada. Cubren:</p>
+  <div class="grid2">
+    <div class="box"><ul>
+      <li>Aritmética de fechas.</li>
+      <li>Motor por reglas: puntual = bajo, morosa = alto, sin usar datos futuros.</li>
+      <li>Datos de demo con los tres niveles y acciones pendientes.</li>
+      <li>Pago estricto y saldo de la cuota.</li>
+      <li>Plan de pagos que refinancia la deuda exacta.</li>
+      <li>La bandeja descarta lo ya gestionado.</li>
+      <li>Aranceles con beca y descuento por hermano, sin duplicar.</li>
+      <li>Medidas estadísticas y frecuencias.</li>
+      <li>Alta de alumno: DNI, edad y cupo.</li>
+      <li>Baja y reincorporación.</li>
+      <li>Asistencia por curso sin duplicados.</li>
+    </ul></div>
+    <div class="box"><ul>
+      <li>Estadísticas sobre los datos de demo.</li>
+      <li>Imputación a la deuda más antigua y saldo a favor.</li>
+      <li>Cobro parcial y anulación.</li>
+      <li>Conciliación de la cuenta corriente de todas las familias.</li>
+      <li>Recargos idempotentes y condonación.</li>
+      <li>Cargo masivo y aplicación del saldo a favor.</li>
+      <li>Promesa que pausa la bandeja y se cumple.</li>
+      <li>Lote de débito con acreditados y rechazos.</li>
+      <li>Tramos de antigüedad que suman el total.</li>
+      <li>Regresión logística y AUC.</li>
+      <li>Inteligencia completa sobre los datos de demo.</li>
+    </ul></div>
+  </div>
+
+  <!-- 16 -->
+  <h2 id="produccion"><span class="n">16</span>Pendiente para producción</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tema</th><th>Situación actual</th><th>Qué hace falta</th></tr></thead>
+    <tbody>
+      <tr><td>Autenticación y roles</td><td>Administración sin login; portal con código.</td><td>Usuarios, roles (administración, dirección, docentes), sesiones, login de familias (contraseña o enlace por mail) y control de acceso a comprobantes.</td></tr>
+      <tr><td>Auditoría</td><td>Las acciones quedan registradas, pero sin usuario.</td><td>Registrar quién hizo cada cobro, anulación, condonación y cambio de configuración.</td></tr>
+      <tr><td>Pagos y bancos</td><td>Pago online simulado; archivo de débito genérico.</td><td>Pasarela de pago, CBU de las familias, formato de cada banco y lectura del archivo de respuesta.</td></tr>
+      <tr><td>Comunicaciones</td><td>Se abren <code>mailto:</code> y <code>wa.me</code>.</td><td>Envío real de mail y WhatsApp Business, con apertura y respuesta automáticas.</td></tr>
+      <tr><td>Facturación</td><td>Recibos internos.</td><td>Facturación electrónica (AFIP/ARCA) si corresponde.</td></tr>
+      <tr><td>Datos y modelo</td><td>Datos ficticios.</td><td>Importar el historial real, medir la línea base, recalibrar umbrales, supuestos y modelos, y monitorear la deriva.</td></tr>
+      <tr><td>Operación</td><td>Un proceso, SQLite local.</td><td>HTTPS, copias de seguridad, monitoreo y, si crece el volumen, una base de datos de servidor.</td></tr>
+      <tr><td>Privacidad</td><td>Consentimiento registrado en el legajo.</td><td>Aviso de privacidad formal, plazos de conservación y procedimiento de acceso y rectificación (Ley 25.326).</td></tr>
+    </tbody>
+  </table></div>
+
+  <footer>Documentación del MVP "Gestión escolar y morosidad". Los valores numéricos citados salen de los datos de demostración, que son ficticios. Detalle del puntaje por reglas: docs/motor-predictivo.html.</footer>
+</main>
+</div>
