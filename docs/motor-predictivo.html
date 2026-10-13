@@ -1,0 +1,303 @@
+<title>Puntaje de riesgo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ink: #12303B;
+    --ink-2: #44565D;
+    --ink-3: #6B7A80;
+    --bg: #F6F3EC;
+    --surface: #FFFFFF;
+    --surface-2: #FBF9F4;
+    --line: #E2DDD0;
+    --line-2: #ECE7DA;
+    --accent: #B7791F;
+    --accent-bg: #FBF0DC;
+    --brand: #1F6F66;
+    --brand-bg: #E3F2EE;
+    --bar: #1B4452;
+    --bar-bg: #ECE7DA;
+    --bad: #B8432C;
+    --bad-bg: #F7E3DE;
+    --warn-bg: #FBF0DC;
+    --code-bg: #F1EDE3;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #EDEAE2; --ink-2: #C3CBCD; --ink-3: #93A2A7;
+      --bg: #0E1E24; --surface: #15262D; --surface-2: #1A2E36;
+      --line: #2A4049; --line-2: #22363E;
+      --accent: #E9A23B; --accent-bg: #3A3216;
+      --brand: #5FC2AE; --brand-bg: #143A35;
+      --bar: #5FA8B5; --bar-bg: #22363E;
+      --bad: #E8607A; --bad-bg: #3D2229; --warn-bg: #3A3216;
+      --code-bg: #1F343C;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #EDEAE2; --ink-2: #C3CBCD; --ink-3: #93A2A7;
+    --bg: #0E1E24; --surface: #15262D; --surface-2: #1A2E36;
+    --line: #2A4049; --line-2: #22363E;
+    --accent: #E9A23B; --accent-bg: #3A3216;
+    --brand: #5FC2AE; --brand-bg: #143A35;
+    --bar: #5FA8B5; --bar-bg: #22363E;
+    --bad: #E8607A; --bad-bg: #3D2229; --warn-bg: #3A3216;
+    --code-bg: #1F343C;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: .88em; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin: 0 0 8px; }
+  h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.15; margin: 0 0 12px; letter-spacing: -.01em; text-wrap: balance; }
+  h2 { font-size: 24px; line-height: 1.25; margin: 56px 0 6px; text-wrap: balance; }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  .lead { font-size: 18px; color: var(--ink-2); }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 14px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 18px 0 0; font-size: 14px; color: var(--ink-3); }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 28px 0 0; }
+  .fact { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 14px 16px; }
+  .fact .k { font-size: 13px; color: var(--ink-3); }
+  .fact .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .fact .d { font-size: 13px; color: var(--ink-2); }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0 0; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+       padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.r, th.r { text-align: right; }
+  .rules td:first-child { font-weight: 600; white-space: nowrap; }
+  .rules td.max { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  .rules .formula { display: block; margin-top: 4px; }
+  tr.total td { font-weight: 700; background: var(--surface-2); border-top: 1px solid var(--line); }
+
+  .callouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; }
+  .callout { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 16px 18px; }
+  .callout h3 { margin: 0 0 6px; font-size: 16px; }
+  .callout p { font-size: 15px; margin: 0 0 8px; }
+  .callout p:last-child { margin: 0; }
+
+  .note { background: var(--accent-bg); border-radius: 10px; padding: 12px 16px; margin: 16px 0 0; font-size: 15px; max-width: none; }
+
+  .caso { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .caso-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; margin: 0 0 4px; }
+  .score { font-size: 44px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+  .pill.alto { background: var(--bad-bg); color: var(--bad); }
+  .pill.medio { background: var(--warn-bg); color: var(--ink); }
+  .cuotas { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+  .cuota { font-size: 13px; padding: 4px 9px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line-2); font-variant-numeric: tabular-nums; }
+  .cuota.imp { border-color: var(--bad); color: var(--bad); font-weight: 600; }
+  .cuota.cero { border-color: var(--brand); color: var(--brand); }
+
+  .bars { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 16px 18px; }
+  .bars h3 { margin: 0 0 4px; font-size: 15px; }
+  .bar-row { display: grid; grid-template-columns: 104px minmax(0, 1fr) 62px; gap: 10px; align-items: center; padding: 5px 0; font-size: 13.5px; }
+  .track { position: relative; height: 10px; background: var(--bar-bg); border-radius: 5px; overflow: hidden; }
+  .track i { position: absolute; inset: 0 auto 0 0; background: var(--bar); border-radius: 5px; }
+  .bar-row .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .bar-row .v b { color: var(--ink); }
+  .sum { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; font-size: 14px; color: var(--ink-2); }
+  .sum b { color: var(--ink); }
+
+  ol.steps { margin: 12px 0 0; padding-left: 22px; max-width: 72ch; }
+  ol.steps li { margin: 0 0 6px; }
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
+
+  @media (max-width: 860px) {
+    .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .callouts { grid-template-columns: 1fr; }
+    .caso { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .facts { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 88px minmax(0, 1fr) 56px; }
+  }
+</style>
+
+<main class="wrap">
+  <p class="eyebrow">Documentación técnica · Motor predictivo</p>
+  <h1>Cómo se calcula el puntaje de riesgo</h1>
+  <p class="lead">El motor por reglas asigna a cada familia un puntaje de 0 a 100 que estima el riesgo de que su próxima cuota se pague con más de 10 días de atraso. Suma siete señales, cada una con un máximo, y explica el resultado con un motivo principal.</p>
+  <div class="meta">
+    <span><b>Código:</b> <code>src/risk.js</code> · función <code>scoreFamily</code></span>
+    <span><b>Ejemplos calculados al:</b> 13/10/2026</span>
+    <span><b>Datos:</b> demostración, ficticios</span>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><div class="k">Señales</div><div class="v">7</div><div class="d">sólo pago, contacto y calendario</div></div>
+    <div class="fact"><div class="k">Suma de máximos</div><div class="v">120</div><div class="d">el total se corta en 100</div></div>
+    <div class="fact"><div class="k">Nivel medio desde</div><div class="v">25</div><div class="d">umbral configurable</div></div>
+    <div class="fact"><div class="k">Nivel alto desde</div><div class="v">50</div><div class="d">umbral configurable</div></div>
+  </div>
+
+  <h2>Las siete señales</h2>
+  <p class="muted small">Definidas en <code>SENALES</code> (src/risk.js, líneas 13–21) y calculadas en <code>scoreFamily</code> (líneas 49–150). Los rangos de líneas corresponden a cada bloque.</p>
+  <div class="table-wrap">
+    <table class="rules">
+      <thead><tr><th>Señal</th><th>Regla exacta</th><th class="r">Máx.</th><th>Líneas</th></tr></thead>
+      <tbody>
+        <tr><td>Historial de pagos</td>
+          <td>Últimas 6 cuotas ya vencidas (aranceles y cuotas de planes; no recargos ni cargos extra).
+            <span class="formula"><code>promedio de días de atraso × 1,2 + 4 × cuotas con más de 10 días</code>, con tope de 40.</span></td>
+          <td class="max">40</td><td class="mono small">58–70</td></tr>
+        <tr><td>Deuda vencida actual</td>
+          <td>Según la cuota impaga más antigua: más de 30 días de atraso = <b>25</b>; de 11 a 30 días = <b>18</b>; de 1 a 10 días = <b>10</b>; sin deuda vencida = 0.</td>
+          <td class="max">25</td><td class="mono small">72–80</td></tr>
+        <tr><td>Momento del pago</td>
+          <td>Entre las últimas 6 cuotas pagadas en término (0 días de atraso), las que se pagaron el mismo día del vencimiento o después de 2 o más avisos.
+            <span class="formula"><code>(pagos justos ÷ pagos en término) × 10</code></span></td>
+          <td class="max">10</td><td class="mono small">82–96</td></tr>
+        <tr><td>Medio de pago</td>
+          <td>Últimos 180 días: <code>10 × débitos rechazados + 5 × bajas del débito automático</code>, con tope de 20.</td>
+          <td class="max">20</td><td class="mono small">98–107</td></tr>
+        <tr><td>Vínculo con la escuela</td>
+          <td>Avisos por mail o WhatsApp de los últimos 90 días (llamadas y reuniones no cuentan). Con al menos 2 avisos:
+            <span class="formula"><code>(avisos sin abrir ni responder ÷ avisos) × 10</code>; con menos de 2, 0.</span></td>
+          <td class="max">10</td><td class="mono small">109–117</td></tr>
+        <tr><td>Uso del portal</td>
+          <td>Consultas de saldo de los últimos 60 días sin un pago en los 5 días siguientes: <code>3 × consultas</code>, con tope de 10.</td>
+          <td class="max">10</td><td class="mono small">119–127</td></tr>
+        <tr><td>Estacionalidad</td>
+          <td>Si el próximo vencimiento cae en marzo, julio o diciembre = <b>5</b>; si no, 0.</td>
+          <td class="max">5</td><td class="mono small">129–135</td></tr>
+        <tr class="total"><td>Total</td><td>Suma de las siete señales, redondeada y cortada en 100.</td><td class="max">120</td><td class="mono small">137</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note"><b>No es una escala por escalones.</b> El historial usa una fórmula continua: cada día de atraso promedio suma 1,2 puntos, y cada cuota con más de 10 días suma 4 más. La única señal por tramos es la deuda vencida actual.</p>
+
+  <h2>Tope, nivel y motivo</h2>
+  <div class="callouts">
+    <div class="callout">
+      <h3>Tope en 100</h3>
+      <p><code>Math.min(100, Math.round(suma))</code></p>
+      <p class="small muted">Cada señal conserva sus decimales; se redondea la suma y después se corta en 100. Como los máximos suman 120, cualquier suma de 100 o más queda en 100. Línea 137.</p>
+    </div>
+    <div class="callout">
+      <h3>Nivel de riesgo</h3>
+      <p>Alto desde 50 · medio desde 25 · bajo por debajo de 25.</p>
+      <p class="small muted">Los umbrales se leen de Configuración (<code>umbral_medio</code>, <code>umbral_alto</code>). Línea 138.</p>
+    </div>
+    <div class="callout">
+      <h3>Motivo principal</h3>
+      <p>La señal con más puntos.</p>
+      <p class="small muted">En un empate gana la primera en el orden historial, deuda, momento, medio, vínculo, portal, estacionalidad. Si el nivel es bajo, el motivo es "Paga en término". Líneas 140–146.</p>
+    </div>
+  </div>
+
+  <h3>Cómo se mide el atraso de una cuota</h3>
+  <p>Función <code>cuotaAt</code> (src/risk.js, líneas 24–38), con los datos conocidos a la fecha de cálculo:</p>
+  <ol class="steps">
+    <li><b>Pagada:</b> días entre el vencimiento y el pago que completó el monto. Los débitos rechazados no cuentan como pago.</li>
+    <li><b>Impaga:</b> días entre el vencimiento y la fecha de cálculo.</li>
+    <li><b>Refinanciada en un plan:</b> se cierra en la fecha del plan, con el atraso que llevaba.</li>
+    <li>El atraso nunca es negativo: pagar antes del vencimiento cuenta como 0.</li>
+  </ol>
+
+  <h3>Dónde se usa</h3>
+  <p><code>loadLedger</code> (src/domain.js) calcula el puntaje de cada familia con la fecha de hoy, su próximo vencimiento y los umbrales de Configuración. El indicador "Precisión de alertas" y el backtest usan la misma función con la fecha de 10 días antes de cada vencimiento, para medir sólo con lo que se sabía en ese momento.</p>
+
+  <h2>Ejemplo 1 · Familia Gómez</h2>
+  <div class="caso">
+    <div>
+      <div class="caso-head"><span class="score">100</span><span class="pill alto">Riesgo alto</span><span class="muted small">Motivo principal: Historial de pagos</span></div>
+      <p class="small muted" style="margin:6px 0 0">Últimas 6 cuotas vencidas, en días de atraso:</p>
+      <div class="cuotas">
+        <span class="cuota imp">sep · 28 · impaga</span><span class="cuota">ago · 58</span><span class="cuota cero">jul · 0</span>
+        <span class="cuota">jun · 63</span><span class="cuota">may · 48</span><span class="cuota">abr · 60</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Señal</th><th>Cálculo</th><th class="r">Puntos</th></tr></thead>
+          <tbody>
+            <tr><td>Historial</td><td>(28 + 58 + 0 + 63 + 48 + 60) ÷ 6 = 42,8 días → 42,8 × 1,2 = 51,4; más 5 cuotas con más de 10 días × 4 = 20. Total 71,4 → tope 40.</td><td class="r num">40</td></tr>
+            <tr><td>Deuda vencida</td><td>Septiembre lleva 28 días impaga: tramo de 11 a 30 días.</td><td class="r num">18</td></tr>
+            <tr><td>Momento del pago</td><td>1 sola cuota en término (julio), pagada el día del vencimiento: 1 ÷ 1 × 10.</td><td class="r num">10</td></tr>
+            <tr><td>Medio de pago</td><td>2 débitos rechazados en 180 días (15/05 y 15/06): 2 × 10.</td><td class="r num">20</td></tr>
+            <tr><td>Vínculo</td><td>4 de 4 avisos sin abrir: 4 ÷ 4 × 10.</td><td class="r num">10</td></tr>
+            <tr><td>Portal</td><td>2 consultas de saldo sin pago posterior: 2 × 3.</td><td class="r num">6</td></tr>
+            <tr><td>Estacionalidad</td><td>Próximo vencimiento en octubre.</td><td class="r num">0</td></tr>
+            <tr class="total"><td>Total</td><td>40 + 18 + 10 + 20 + 10 + 6 + 0 = 104 → tope 100.</td><td class="r num">100</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="bars" aria-label="Puntos de Gómez por señal sobre su máximo">
+      <h3>Puntos sobre el máximo de cada señal</h3>
+      <div class="bar-row"><span>Historial</span><span class="track"><i style="width:100%"></i></span><span class="v"><b>40</b> / 40</span></div>
+      <div class="bar-row"><span>Deuda</span><span class="track"><i style="width:72%"></i></span><span class="v"><b>18</b> / 25</span></div>
+      <div class="bar-row"><span>Momento</span><span class="track"><i style="width:100%"></i></span><span class="v"><b>10</b> / 10</span></div>
+      <div class="bar-row"><span>Medio</span><span class="track"><i style="width:100%"></i></span><span class="v"><b>20</b> / 20</span></div>
+      <div class="bar-row"><span>Vínculo</span><span class="track"><i style="width:100%"></i></span><span class="v"><b>10</b> / 10</span></div>
+      <div class="bar-row"><span>Portal</span><span class="track"><i style="width:60%"></i></span><span class="v"><b>6</b> / 10</span></div>
+      <div class="bar-row"><span>Estacionalidad</span><span class="track"><i style="width:0%"></i></span><span class="v"><b>0</b> / 5</span></div>
+      <div class="sum">Suma <b>104</b> → puntaje <b>100</b> por el tope.</div>
+    </div>
+  </div>
+
+  <h2>Ejemplo 2 · Familia Arias</h2>
+  <div class="caso">
+    <div>
+      <div class="caso-head"><span class="score">35</span><span class="pill medio">Riesgo medio</span><span class="muted small">Motivo principal: Medio de pago</span></div>
+      <p class="small muted" style="margin:6px 0 0">Últimas 6 cuotas, todas pagadas, en días de atraso:</p>
+      <div class="cuotas">
+        <span class="cuota">sep · 10</span><span class="cuota">ago · 4</span><span class="cuota cero">jul · 0</span>
+        <span class="cuota">jun · 8</span><span class="cuota">may · 7</span><span class="cuota">abr · 5</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Señal</th><th>Cálculo</th><th class="r">Puntos</th></tr></thead>
+          <tbody>
+            <tr><td>Historial</td><td>(10 + 4 + 0 + 8 + 7 + 5) ÷ 6 = 5,67 días → 5,67 × 1,2 = 6,8. Ninguna supera los 10 días (septiembre tiene exactamente 10), así que no suma extra.</td><td class="r num">6,8</td></tr>
+            <tr><td>Deuda vencida</td><td>Sin deuda vencida.</td><td class="r num">0</td></tr>
+            <tr><td>Momento del pago</td><td>1 cuota en término (julio), pagada 3 días antes y sin 2 avisos: 0 ÷ 1.</td><td class="r num">0</td></tr>
+            <tr><td>Medio de pago</td><td>3 débitos rechazados en 180 días (15/05, 15/06 y 15/08): 30 → tope 20.</td><td class="r num">20</td></tr>
+            <tr><td>Vínculo</td><td>4 de 5 avisos sin abrir: 4 ÷ 5 × 10.</td><td class="r num">8</td></tr>
+            <tr><td>Portal</td><td>Sin consultas recientes.</td><td class="r num">0</td></tr>
+            <tr><td>Estacionalidad</td><td>Próximo vencimiento en noviembre.</td><td class="r num">0</td></tr>
+            <tr class="total"><td>Total</td><td>6,8 + 20 + 8 = 34,8 → redondeo a 35.</td><td class="r num">35</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small" style="margin-top:12px">Paga casi siempre con pocos días de atraso; lo que la lleva a riesgo medio son los débitos rechazados y los avisos sin abrir.</p>
+    </div>
+    <div class="bars" aria-label="Puntos de Arias por señal sobre su máximo">
+      <h3>Puntos sobre el máximo de cada señal</h3>
+      <div class="bar-row"><span>Historial</span><span class="track"><i style="width:17%"></i></span><span class="v"><b>6,8</b> / 40</span></div>
+      <div class="bar-row"><span>Deuda</span><span class="track"><i style="width:0%"></i></span><span class="v"><b>0</b> / 25</span></div>
+      <div class="bar-row"><span>Momento</span><span class="track"><i style="width:0%"></i></span><span class="v"><b>0</b> / 10</span></div>
+      <div class="bar-row"><span>Medio</span><span class="track"><i style="width:100%"></i></span><span class="v"><b>20</b> / 20</span></div>
+      <div class="bar-row"><span>Vínculo</span><span class="track"><i style="width:80%"></i></span><span class="v"><b>8</b> / 10</span></div>
+      <div class="bar-row"><span>Portal</span><span class="track"><i style="width:0%"></i></span><span class="v"><b>0</b> / 10</span></div>
+      <div class="bar-row"><span>Estacionalidad</span><span class="track"><i style="width:0%"></i></span><span class="v"><b>0</b> / 5</span></div>
+      <div class="sum">Suma <b>34,8</b> → puntaje <b>35</b>.</div>
+    </div>
+  </div>
+
+  <footer>
+    Este puntaje por reglas es distinto de la probabilidad del modelo de machine learning (pantalla Inteligencia, <code>src/ml.js</code>), que se entrena con el historial. Los ejemplos usan datos de demostración ficticios: si se recargan, los valores cambian.
+  </footer>
+</main>

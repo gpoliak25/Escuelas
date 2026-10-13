@@ -5,6 +5,7 @@ const path = require('node:path');
 const db_ = require('./src/db');
 const { dispatch, HttpError } = require('./src/api');
 const { seed } = require('./src/seed');
+const { DOCUMENTOS, errorPagina } = require('./src/documentos');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -50,6 +51,15 @@ function serveStatic(pathname, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+  const doc = /^\/(recibos|estado-cuenta|libre-deuda)\/(\d+)$/.exec(url.pathname);
+  if (doc && req.method === 'GET') {
+    try {
+      return send(res, 200, DOCUMENTOS[doc[1]](db, Number(doc[2])), 'text/html; charset=utf-8');
+    } catch (e) {
+      if (!(e instanceof HttpError)) console.error(e);
+      return send(res, e.status || 500, errorPagina(e instanceof HttpError ? e.message : 'Error interno del servidor'), 'text/html; charset=utf-8');
+    }
+  }
   if (!url.pathname.startsWith('/api/')) {
     if (req.method !== 'GET') return send(res, 405, { error: 'Método no permitido' });
     return serveStatic(decodeURIComponent(url.pathname), res);

@@ -24,16 +24,20 @@ const data = {};
 const guardar = (ruta) => { data[ruta] = get(ruta); return data[ruta]; };
 
 for (const r of ['/api/dashboard', '/api/acciones', '/api/planes', '/api/riesgo', '/api/config', '/api/estadisticas',
-  '/api/alumnos', '/api/cursos', '/api/familias/opciones']) guardar(r);
+  '/api/alumnos', '/api/cursos', '/api/familias/opciones', '/api/caja', '/api/deudores', '/api/debitos', '/api/recargos', '/api/ml']) guardar(r);
 
 // Familias: la lista se filtra en el navegador (activas e inactivas por separado)
 const activas = get('/api/familias').familias;
 const inactivas = get('/api/familias?estado=inactivas').familias;
-for (const f of [...activas, ...inactivas]) guardar(`/api/familias/${f.id}`);
+for (const f of [...activas, ...inactivas]) { guardar(`/api/familias/${f.id}`); guardar(`/api/ml/familia/${f.id}`); }
 for (const a of data['/api/alumnos'].alumnos) guardar(`/api/alumnos/${a.id}`);
 
-const cuotas = guardar('/api/cuotas');
-for (const p of cuotas.periodos) guardar(`/api/cuotas?periodo=${p}`);
+// Cuotas y cargos: cada tipo y cada período, con la misma query que arma la interfaz
+for (const tipo of ['arancel', 'cargo', 'recargo', 'plan']) {
+  const base = guardar(`/api/cuotas?tipo=${tipo}`);
+  for (const p of base.periodos) guardar(`/api/cuotas?tipo=${tipo}&periodo=${p}`);
+}
+for (const p of data['/api/debitos'].periodos) guardar(`/api/debitos?periodo=${p}`);
 
 // Cursos: asistencia de hoy y de los últimos 20 días hábiles
 const hoy = db_.today(db);
@@ -83,6 +87,13 @@ const mock = `
     }
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   };
+  // Los comprobantes imprimibles y el portal necesitan el servidor
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="/recibos/"], a[href^="/estado-cuenta/"], a[href^="/libre-deuda/"], a[href="/portal"]');
+    if (!a) return;
+    e.preventDefault();
+    toast('Los comprobantes imprimibles y el portal de familias están disponibles al ejecutar el sistema con "npm start".');
+  }, true);
   window.addEventListener('unhandledrejection', (e) => { if (String(e.reason?.message || '').startsWith('Esta es una demo')) { e.preventDefault(); toast(e.reason.message); } });
 })();
 `;
@@ -101,8 +112,8 @@ reemplazar('<title>Gestión escolar · Morosidad</title>', '<title>Gestión esco
 reemplazar('<link rel="stylesheet" href="/styles.css">', `<style>\n${css}\n</style>`);
 reemplazar('<body>', `<body>\n  <div class="demo-banner" role="note">Demo con datos ficticios al ${hoy.split('-').reverse().join('/')} · se puede navegar todo, pero los cambios no se guardan</div>`);
 reemplazar('<a href="/portal" target="_blank" rel="noopener">Abrir portal de familias ↗</a>', '<span>Portal de familias: disponible con <code>npm start</code></span>');
-reemplazar('<script src="/app.js"></script>\n  <script src="/escolar.js"></script>',
-  `<script type="application/json" id="demo-data">${json}</script>\n  <script>${mock}</script>\n  <script>\n${js('app.js')}\n</script>\n  <script>\n${js('escolar.js')}\n</script>`);
+reemplazar('<script src="/app.js"></script>\n  <script src="/escolar.js"></script>\n  <script src="/cobranzas.js"></script>\n  <script src="/ml.js"></script>',
+  `<script type="application/json" id="demo-data">${json}</script>\n  <script>${mock}</script>\n  <script>\n${js('app.js')}\n</script>\n  <script>\n${js('escolar.js')}\n</script>\n  <script>\n${js('cobranzas.js')}\n</script>\n  <script>\n${js('ml.js')}\n</script>`);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html);

@@ -78,8 +78,10 @@ function openModal({ title, body, submit = 'Guardar', onSubmit, wide = false }) 
     const btn = $('button[type=submit]', e.target);
     btn.disabled = true;
     try {
-      await onSubmit(data);
+      // onSubmit puede devolver una función para mostrar algo después de cerrar el formulario
+      const despues = await onSubmit(data);
       modal.close();
+      if (typeof despues === 'function') despues();
     } catch (err) {
       $('#modal-error').textContent = err.message;
     } finally {
@@ -212,6 +214,7 @@ async function pageTablero() {
   const d = await api('/api/dashboard');
   const k = d.kpis;
   const recuperado = k.recupero.filter((r) => r.etapa !== 'sin_gestion').reduce((a, r) => a + r.pct, 0);
+  const g = d.cobranza;
   const tot = d.niveles.bajo + d.niveles.medio + d.niveles.alto || 1;
   main.innerHTML = String(h`
     <div class="page-head">
@@ -238,6 +241,18 @@ async function pageTablero() {
         <span class="sub">De ${k.precision.alertas} alertas de riesgo alto, ${k.precision.aciertos} terminaron en atraso de más de 10 días.</span></div>
       <div class="card kpi"><span class="label">Planes cumplidos</span><span class="value">${pct(k.planes.valor, 0)}</span>
         <span class="sub">${k.planes.cumplidos} de ${k.planes.cerrados} planes finalizados se saldaron. ${k.planes.activos} en curso.</span></div>
+    </div>
+
+    <h2 class="section-title">Gestión de cobranza</h2>
+    <div class="grid g-4">
+      <a class="card kpi link-card" href="#/caja"><span class="label">Cobrado en el mes</span><span class="value">${moneyK(g.cobrado_mes)}</span>
+        <span class="sub">${g.recibos_mes} recibo(s) emitidos${g.rechazos_mes ? ` · ${g.rechazos_mes} débito(s) rechazado(s)` : ''}</span></a>
+      <div class="card kpi"><span class="label">Efectividad de ${g.efectividad.periodo ? fperiodo(g.efectividad.periodo) : '—'}</span><span class="value">${pct(g.efectividad.valor, 0)}</span>
+        <span class="sub">Cobrado ${moneyK(g.efectividad.cobrado)} de ${moneyK(g.efectividad.facturado)} facturados</span></div>
+      <a class="card kpi link-card" href="#/planes"><span class="label">Promesas de pago</span><span class="value">${g.promesas_pendientes}</span>
+        <span class="sub">vigentes · ${g.promesas_incumplidas} incumplida(s) en los últimos 60 días</span></a>
+      <a class="card kpi link-card" href="#/deudores"><span class="label">Recargos adeudados</span><span class="value">${moneyK(g.deuda_recargos)}</span>
+        <span class="sub">${g.recargos_por_liquidar ? `${g.recargos_por_liquidar} por liquidar · ` : ''}saldo a favor de familias ${moneyK(g.saldo_a_favor)}</span></a>
     </div>
 
     <div class="grid g-21 mt">
@@ -325,8 +340,8 @@ function bindLinks(root = main) {
 // ---------- Bandeja de cobranza ----------
 let filtroEtapa = '';
 async function pageCobranza() {
-  const { acciones, hoy } = await api('/api/acciones');
-  const cuenta = Object.fromEntries(ETAPAS.map((e) => [e.key, acciones.filter((a) => a.etapa === e.key).length]));
+  const [{ acciones, hoy }, rec] = await Promise.all([api('/api/acciones'), api('/api/recargos')]);
+  const cuenta = Object.fromEntries([...ETAPAS, { key: 'promesa' }].map((e) => [e.key, acciones.filter((a) => a.etapa === e.key).length]));
   const visibles = filtroEtapa ? acciones.filter((a) => a.etapa === filtroEtapa) : acciones;
   main.innerHTML = String(h`
     <div class="page-head"><div>
@@ -334,6 +349,7 @@ async function pageCobranza() {
       <h1>Bandeja de cobranza</h1>
       <p>Acciones sugeridas para hoy (${fdate(hoy)}). El puntaje orienta; la administración decide cómo actuar con cada familia: podés editar el mensaje, ejecutarlo u omitirlo.</p>
     </div></div>
+    ${rec.creados ? h`<div class="notice">Hay <b>${rec.creados}</b> recargo(s) por mora sin liquidar (${money(rec.monto)}). <button class="btn sm" id="liq-recargos">Liquidar recargos</button></div>` : ''}
     <div class="card">
       <div class="card-head"><div><h2>Escalera de cobranza</h2><p>Cada etapa se activa sólo si la anterior no resolvió la deuda</p></div></div>
       <div class="ladder">${ETAPAS.map((e) => h`<div class="step"><b>${e.when}</b><span>${e.label}</span><span class="n">${cuenta[e.key]}</span></div>`)}</div>
@@ -342,17 +358,20 @@ async function pageCobranza() {
       <div class="stage-tabs" role="tablist">
         <button class="${filtroEtapa ? '' : 'on'}" data-etapa="">Todas <b>${acciones.length}</b></button>
         ${ETAPAS.map((e) => h`<button class="${filtroEtapa === e.key ? 'on' : ''}" data-etapa="${e.key}">${e.label} <b>${cuenta[e.key]}</b></button>`)}
+        ${cuenta.promesa ? h`<button class="${filtroEtapa === 'promesa' ? 'on' : ''}" data-etapa="promesa">Promesas incumplidas <b>${cuenta.promesa}</b></button>` : ''}
       </div>
       ${visibles.length ? visibles.map(accionHtml) : h`<div class="empty">No hay acciones pendientes en esta etapa. 🎉</div>`}
     </div>`);
 
   $$('[data-etapa]').forEach((b) => b.addEventListener('click', () => { filtroEtapa = b.dataset.etapa; pageCobranza(); }));
+  $('#liq-recargos')?.addEventListener('click', liquidarRecargos);
   $$('.action').forEach((el) => {
     const a = visibles[Number(el.dataset.i)];
     $$('[data-do]', el).forEach((b) => b.addEventListener('click', async () => {
       const mensaje = $('textarea', el).value;
       const tipo = b.dataset.do;
-      if (tipo === 'plan') return modalPlan(a.familia_id, a.deuda);
+      if (tipo === 'plan') return modalPlan(a.familia_id, a.deuda, a.deuda_recargos);
+      if (tipo === 'promesa') return modalPromesa(a.familia_id, a.deuda, hoy);
       if (tipo === 'whatsapp') window.open(`https://wa.me/${a.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener');
       if (tipo === 'mail') window.open(`mailto:${a.email}?subject=${encodeURIComponent('Cuota escolar')}&body=${encodeURIComponent(mensaje)}`, '_self');
       try {
@@ -378,14 +397,17 @@ function accionHtml(a, i) {
       <div class="action-meta">
         ${nivelPill(a.riesgo.nivel)} <span class="num">Puntaje ${a.riesgo.puntaje}</span> · <span>${a.riesgo.motivo}</span>
         · <b>${a.etapa_label}</b> · <span>${dias}</span> · <span class="num">${a.etapa === 'prevencion' ? money(a.deuda) : 'Deuda ' + money(a.deuda)}</span>
+        ${a.deuda_recargos ? h` · <span class="num">recargos ${money(a.deuda_recargos)}</span>` : ''}
       </div>
       ${a.accion_preventiva ? h`<p class="small muted" style="margin:0 0 8px">Acción preventiva para ${NIVEL[a.riesgo.nivel].toLowerCase()}: ${a.accion_preventiva}.</p>` : ''}
+      ${a.segmento ? h`<p class="small" style="margin:0 0 8px">${segPill(a.segmento.key, a.segmento.label)} <span class="muted">${a.segmento.estrategia}</span></p>` : ''}
       <label class="sr-only" for="msg-${i}">Mensaje</label>
       <textarea id="msg-${i}" class="msg" rows="3">${a.mensaje}</textarea>
     </div>
     <div class="action-btns">
       <button class="btn primary sm" data-do="${a.canal}">${principal}</button>
-      ${a.etapa === 'plan' || a.etapa === 'reunion' ? h`<button class="btn accent sm" data-do="plan">Crear plan de pagos</button>` : ''}
+      ${a.etapa === 'plan' || a.etapa === 'reunion' || a.etapa === 'promesa' ? h`<button class="btn accent sm" data-do="plan">Crear plan de pagos</button>` : ''}
+      ${a.etapa !== 'prevencion' ? h`<button class="btn sm" data-do="promesa">Promesa de pago</button>` : ''}
       <div class="alt">${otros.map((c) => h`<button class="btn ghost sm" data-do="${c}" title="Registrar por ${CANAL[c]}">${CANAL[c]}</button>`)}</div>
       <button class="btn ghost sm" data-do="omitir" title="Registrar que se decidió no actuar">Omitir</button>
     </div>
@@ -428,41 +450,79 @@ async function pageFamilias(id) {
   await cargar();
 }
 
-let tabFamilia = 'cuenta';
+let tabFamilia = 'cc';
+/** Qué descuentos se aplicaron sobre el arancel de un alumno. */
+function detalleCuota(x) {
+  const partes = [];
+  if (x.beca_pct) partes.push(`beca ${x.beca_pct}%`);
+  if (x.descuento_hermano_pct) partes.push(`hermano −${x.descuento_hermano_pct}%`);
+  return partes.length ? h`<span class="small muted"> · ${partes.join(' · ')}</span>` : '';
+}
 async function pageFamilia(id) {
-  const d = await api('/api/familias/' + id);
-  const f = d.familia, r = d.riesgo;
-  const abiertas = d.cuotas.filter((c) => c.saldo > 0);
+  const [d, ml] = await Promise.all([api('/api/familias/' + id), api('/api/ml/familia/' + id).catch(() => ({}))]);
+  const f = d.familia, r = d.riesgo, res = d.resumen;
+  const cc = d.cuenta_corriente;
+  const incumplida = d.promesas.find((p) => p.estado === 'incumplida');
+  if (!['cc', 'cuenta', 'cobros', 'coms', 'planes', 'legajo'].includes(tabFamilia)) tabFamilia = 'cc';
   main.innerHTML = String(h`
     <div class="page-head">
       <div>
-        <div class="eyebrow"><a href="#/familias">Familias</a> / Legajo</div>
+        <div class="eyebrow"><a href="#/familias">Familias</a> / Cuenta de cobranza</div>
         <h1>Familia ${f.apellido} ${f.activa ? '' : h`<span class="pill plain">Inactiva</span>`}</h1>
         <p>${f.responsable} · ${f.email || 'sin mail'} · ${f.telefono || 'sin teléfono'} · ${MEDIO[f.medio_pago]}</p>
       </div>
       <div class="btn-row">
-        <button class="btn primary" id="b-pago" ${abiertas.length ? '' : 'disabled'}>Registrar pago</button>
-        <button class="btn" id="b-plan" ${d.resumen.deuda_vencida ? '' : 'disabled'}>Plan de pagos</button>
+        <button class="btn primary" id="b-cobro">Registrar cobro</button>
+        <button class="btn" id="b-promesa" ${res.deuda_vencida ? '' : 'disabled'}>Promesa de pago</button>
+        <button class="btn" id="b-plan" ${res.deuda_vencida ? '' : 'disabled'}>Plan de pagos</button>
         <button class="btn" id="b-contacto">Registrar contacto</button>
-        <button class="btn" id="b-editar">Editar</button>
+        <details class="menu">
+          <summary class="btn">Más acciones</summary>
+          <div class="menu-list" role="menu">
+            <button type="button" role="menuitem" id="m-nc">Nota de crédito</button>
+            <button type="button" role="menuitem" id="m-cargo">Nuevo cargo</button>
+            <button type="button" role="menuitem" id="m-rechazo">Débito rechazado</button>
+            <button type="button" role="menuitem" id="m-reclamo">Reclamo o pedido de pase</button>
+            ${d.saldo_a_favor ? h`<button type="button" role="menuitem" id="m-aplicar">Aplicar saldo a favor</button>` : ''}
+            <a role="menuitem" href="/estado-cuenta/${f.id}" target="_blank" rel="noopener">Estado de cuenta (imprimir)</a>
+            ${res.deuda_vencida ? '' : h`<a role="menuitem" href="/libre-deuda/${f.id}" target="_blank" rel="noopener">Certificado de libre deuda</a>`}
+            <button type="button" role="menuitem" id="m-editar">Editar datos de la familia</button>
+          </div>
+        </details>
       </div>
     </div>
-    <div class="grid g-3">
-      <div class="card kpi"><span class="label">Deuda vencida</span><span class="value">${money(d.resumen.deuda_vencida)}</span><span class="sub">${d.resumen.max_atraso ? `La más antigua con ${d.resumen.max_atraso} días de atraso` : 'Al día'}</span></div>
-      <div class="card kpi"><span class="label">Cuota mensual</span><span class="value">${money(d.monto_mensual)}</span><span class="sub">${d.alumnos.filter((a) => a.activo).length} alumno(s), con becas y descuento por hermanos</span></div>
-      <div class="card kpi"><span class="label">Próximo vencimiento</span><span class="value">${fdate(d.resumen.proximo_vencimiento)}</span><span class="sub">Código de portal: <b class="num">${f.codigo_portal}</b></span></div>
+    ${res.promesa ? h`<div class="notice">Promesa de pago vigente: <b>${money(res.promesa.monto)}</b> para el <b>${fdate(res.promesa.fecha)}</b>. Hasta esa fecha la familia no aparece en la bandeja de cobranza.</div>` : ''}
+    ${!res.promesa && incumplida && res.deuda_vencida ? h`<div class="notice bad">Promesa incumplida: se esperaban ${money(incumplida.monto)} el ${fdate(incumplida.fecha_promesa)}.</div>` : ''}
+    <div class="grid g-4">
+      <div class="card kpi"><span class="label">Deuda vencida</span><span class="value">${money(res.deuda_vencida)}</span>
+        <span class="sub">${res.deuda_vencida ? `La más antigua con ${res.max_atraso} días${res.deuda_recargos ? ` · incluye ${money(res.deuda_recargos)} de recargos` : ''}` : 'Al día'}</span></div>
+      <div class="card kpi"><span class="label">Saldo a favor</span><span class="value">${money(d.saldo_a_favor)}</span>
+        <span class="sub">${d.saldo_a_favor ? 'Se aplica solo a las próximas cuotas' : 'Sin pagos sin imputar'}</span></div>
+      <div class="card kpi"><span class="label">Cuota mensual</span><span class="value">${money(d.monto_mensual)}</span>
+        ${d.desglose_cuota.length ? h`<ul class="desglose">${d.desglose_cuota.map((x) => h`<li><span>${x.nombre} <span class="muted">(${x.grado}° ${x.seccion})</span>${detalleCuota(x)}</span><b class="num">${money(x.monto)}</b></li>`)}</ul>` : h`<span class="sub">Sin alumnos activos</span>`}</div>
+      <div class="card kpi"><span class="label">Próximo vencimiento</span><span class="value">${fdate(res.proximo_vencimiento)}</span><span class="sub">Último cobro: ${fdate(res.ultimo_cobro)} · Portal: <b class="num">${f.codigo_portal}</b></span></div>
     </div>
     <div class="grid g-21 mt">
       <div class="card">
         <div class="tabs" role="tablist">
-          ${[['cuenta', 'Estado de cuenta'], ['coms', `Comunicaciones (${d.comunicaciones.length})`], ['pagos', 'Pagos'], ['planes', `Planes (${d.planes.length})`], ['legajo', 'Alumnos y legajo']]
+          ${[['cc', 'Cuenta corriente'], ['cuenta', 'Cuotas y cargos'], ['cobros', `Cobros (${d.cobros.length})`], ['coms', `Comunicaciones (${d.comunicaciones.length})`],
+            ['planes', `Acuerdos (${d.planes.length + d.promesas.length})`], ['legajo', 'Alumnos y legajo']]
             .map(([k, l]) => h`<button class="${tabFamilia === k ? 'on' : ''}" data-tab="${k}">${l}</button>`)}
         </div>
         <div id="tab"></div>
       </div>
       <div>
+        ${ml.segmento ? h`<div class="card ml-card">
+          <div class="card-head"><div><h2>Modelo predictivo (ML)</h2><p>Probabilidad de que la próxima cuota se atrase más de 10 días</p></div><a class="btn sm" href="#/ml/modelo">Ver modelo</a></div>
+          <div class="gauge"><span class="big num" style="color:${raw(ml.prob >= 0.5 ? 'var(--bad)' : ml.prob >= 0.25 ? 'var(--warn)' : 'var(--ok)')}">${pct(ml.prob, 0)}</span>
+            <div>${segPill(ml.segmento.key, ml.segmento.label)}<div class="small muted" style="margin-top:4px">hace 3 meses: ${pct(ml.prob_90, 0)}</div></div></div>
+          ${ml.motivos.length ? h`<p class="small" style="margin:10px 0 0"><b>Por qué:</b> ${ml.motivos.join(' · ')}</p>` : ''}
+          <p class="small" style="margin:8px 0 0"><b>Segmento:</b> ${ml.segmento.motivo}.</p>
+          <p class="small" style="margin:8px 0 0"><b>Estrategia sugerida:</b> ${ml.segmento.estrategia}</p>
+          ${ml.recupero != null ? h`<p class="small" style="margin:8px 0 0"><b>Probabilidad de cobrar la deuda en 30 días:</b> ${pct(ml.recupero, 0)}</p>` : ''}
+        </div>` : ''}
         <div class="card">
-          <div class="card-head"><div><h2>Riesgo de atraso</h2><p>Próxima cuota con más de 10 días de atraso</p></div></div>
+          <div class="card-head"><div><h2>Riesgo de atraso · reglas</h2><p>Próxima cuota con más de 10 días de atraso</p></div></div>
           <div class="gauge"><span class="big" style="color:${raw(NIVEL_COLOR[r.nivel])}">${r.puntaje}</span><div>${nivelPill(r.nivel)}<div class="small muted" style="margin-top:4px">${r.motivo}</div></div></div>
           <div class="mt">${r.factores.map((x) => h`<div class="factor"><span class="small">${x.label}</span><span class="bar"><i style="width:${(x.puntos / x.max) * 100}%"></i></span><span class="r num small">${x.puntos}/${x.max}</span><span class="d">${x.detalle}</span></div>`)}</div>
         </div>
@@ -479,11 +539,30 @@ async function pageFamilia(id) {
     </div>`);
 
   const tabs = {
+    cc: () => h`
+      <div class="cc-head"><div><span class="muted small">Saldo al ${fdate(d.hoy)}</span>
+        <div class="cc-saldo ${cc.saldo > 0 ? 'deudor' : 'favor'}">${money(Math.abs(cc.saldo))} <span class="small">${cc.saldo > 0 ? 'deudor' : cc.saldo < 0 ? 'a favor' : ''}</span></div></div>
+        <a class="btn sm" href="/estado-cuenta/${f.id}" target="_blank" rel="noopener">Imprimir estado de cuenta</a></div>
+      ${cc.movimientos.length ? h`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Concepto</th><th class="r">Debe</th><th class="r">Haber</th><th class="r">Saldo</th></tr></thead><tbody>
+        ${cc.movimientos.map((m) => h`<tr><td class="num">${fdate(m.fecha)}</td>
+          <td>${m.cobro_id ? h`<a href="/recibos/${m.cobro_id}" target="_blank" rel="noopener">${m.concepto}</a>` : m.concepto} ${m.tipo === 'recargo' ? tipoPill('recargo') : m.tipo === 'cargo' ? tipoPill('cargo') : ''}</td>
+          <td class="r num">${m.debe ? money(m.debe) : ''}</td><td class="r num haber">${m.haber ? money(m.haber) : ''}</td><td class="r num">${money(m.saldo)}</td></tr>`)}
+      </tbody></table></div>` : h`<div class="empty">Sin movimientos.</div>`}
+      ${cc.a_vencer.length ? h`<h3 class="form-sec mt">Próximos vencimientos</h3><table><tbody>
+        ${cc.a_vencer.map((c) => h`<tr><td class="num">${fdate(c.fecha)}</td><td>${c.concepto}</td><td class="r num">${money(c.saldo)}${c.saldo < c.monto ? h` <span class="small muted">de ${money(c.monto)}</span>` : ''}</td></tr>`)}</tbody></table>` : ''}`,
     cuenta: () => h`<div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Vencimiento</th><th class="r">Monto</th><th class="r">Saldo</th><th>Estado</th><th class="r">Atraso</th><th></th></tr></thead><tbody>
-      ${d.cuotas.map((c) => h`<tr><td>${c.concepto}</td><td class="num">${fdate(c.vencimiento)}</td><td class="r num">${money(c.monto)}</td><td class="r num">${c.saldo ? money(c.saldo) : '—'}</td>
+      ${d.cuotas.map((c) => h`<tr><td>${c.concepto} ${c.tipo !== 'arancel' ? tipoPill(c.tipo) : ''}</td><td class="num">${fdate(c.vencimiento)}</td><td class="r num">${money(c.monto)}</td><td class="r num">${c.saldo ? money(c.saldo) : '—'}</td>
         <td>${estadoPill(c.estado)}${c.fecha_pago ? h`<div class="small muted">${fdate(c.fecha_pago)}</div>` : ''}</td><td class="r num">${c.atraso ? c.atraso + ' d' : '—'}</td>
-        <td class="r">${c.saldo > 0 ? h`<button class="btn sm" data-pagar="${c.id}">Pagar</button>` : ''}</td></tr>`)}
+        <td class="r"><div class="btn-row" style="justify-content:flex-end;flex-wrap:nowrap">
+          ${c.saldo > 0 ? h`<button class="btn sm" data-pagar="${c.id}">Cobrar</button>` : ''}
+          ${c.saldo > 0 && c.tipo === 'recargo' ? h`<button class="btn ghost sm" data-condonar="${c.id}">Condonar</button>` : ''}</div></td></tr>`)}
       </tbody></table></div>`,
+    cobros: () => d.cobros.length ? h`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Medio</th><th class="r">Importe</th><th class="r">A favor</th><th>Estado</th><th></th></tr></thead><tbody>
+      ${d.cobros.map((c) => h`<tr><td class="num">${fdate(c.fecha)}</td><td class="num">${c.comprobante}</td>
+        <td>${c.medio_label}${c.referencia ? h`<div class="small muted">${c.referencia}</div>` : ''}${c.tipo === 'nota_credito' || c.estado !== 'vigente' ? h`<div class="small muted">${c.motivo}</div>` : ''}</td>
+        <td class="r num">${money(c.monto)}</td><td class="r num">${c.a_favor ? money(c.a_favor) : '—'}</td><td>${cobroPill(c.estado)}</td>
+        <td class="r"><div class="btn-row" style="justify-content:flex-end;flex-wrap:nowrap">${linkRecibo(c, 'Ver')}${c.estado === 'vigente' ? h`<button class="btn ghost sm" data-anular="${c.id}">Anular</button>` : ''}</div></td></tr>`)}
+      </tbody></table></div>` : h`<div class="empty">Sin cobros registrados.</div>`,
     coms: () => d.comunicaciones.length ? h`<ul class="tl">${d.comunicaciones.map((m) => h`<li><span class="when">${fdate(m.fecha)}</span><div>
         <b>${m.etapa_label}</b> · ${CANAL[m.canal] || m.canal} ${m.estado === 'omitida' ? h`<span class="pill plain">Omitida</span>` : ''}
         <div class="small muted">${m.mensaje}</div>
@@ -491,16 +570,20 @@ async function pageFamilia(id) {
           <label class="field check"><input type="checkbox" data-com="${m.id}" data-k="abierto" ${m.abierto ? 'checked' : ''}> Abierto</label>
           <label class="field check"><input type="checkbox" data-com="${m.id}" data-k="respondido" ${m.respondido ? 'checked' : ''}> Respondido</label></div>` : ''}
       </div></li>`)}</ul>` : h`<div class="empty">Sin comunicaciones.</div>`,
-    pagos: () => d.pagos.length ? h`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Medio</th><th class="r">Monto</th><th></th></tr></thead><tbody>
-      ${d.pagos.map((p) => h`<tr><td class="num">${fdate(p.fecha)}</td><td>${p.concepto}</td><td>${MEDIO[p.medio] || p.medio}</td><td class="r num">${money(p.monto)}</td><td>${p.rechazado ? h`<span class="pill bad">Rechazado</span>` : ''}</td></tr>`)}
-      </tbody></table></div>` : h`<div class="empty">Sin pagos registrados.</div>`,
-    planes: () => d.planes.length ? h`<div class="table-wrap"><table><thead><tr><th>Plan</th><th>Fecha</th><th class="r">Total</th><th>Cuotas</th><th>Estado</th><th class="r">Saldo</th></tr></thead><tbody>
-      ${d.planes.map((p) => h`<tr><td>#${p.id}<div class="small muted">${p.nota}</div></td><td class="num">${fdate(p.fecha)}</td><td class="r num">${money(p.monto_total)}</td><td class="num">${p.cuotas_pagadas}/${p.cuotas_n}</td><td><span class="pill ${p.estado}">${p.estado}</span></td><td class="r num">${money(p.saldo)}</td></tr>`)}
-      </tbody></table></div>` : h`<div class="empty">La familia no tiene planes de pago.</div>`,
+    planes: () => h`
+      <h3 class="form-sec">Promesas de pago</h3>
+      ${d.promesas.length ? h`<div class="table-wrap"><table><thead><tr><th>Registrada</th><th>Fecha prometida</th><th class="r">Importe</th><th class="r">Cobrado</th><th>Estado</th><th>Nota</th><th></th></tr></thead><tbody>
+        ${d.promesas.map((p) => h`<tr><td class="num">${fdate(p.fecha_registro)}</td><td class="num">${fdate(p.fecha_promesa)}</td><td class="r num">${money(p.monto)}</td><td class="r num">${money(p.cobrado)}</td>
+          <td>${promesaPill(p.estado)}</td><td class="small">${p.nota}</td><td class="r">${p.estado === 'pendiente' ? h`<button class="btn ghost sm" data-anular-promesa="${p.id}">Anular</button>` : ''}</td></tr>`)}
+      </tbody></table></div>` : h`<p class="small muted">Sin promesas de pago.</p>`}
+      <h3 class="form-sec mt">Planes de pago</h3>
+      ${d.planes.length ? h`<div class="table-wrap"><table><thead><tr><th>Plan</th><th>Fecha</th><th class="r">Total</th><th>Cuotas</th><th>Estado</th><th class="r">Saldo</th></tr></thead><tbody>
+        ${d.planes.map((p) => h`<tr><td>#${p.id}<div class="small muted">${p.nota}</div></td><td class="num">${fdate(p.fecha)}</td><td class="r num">${money(p.monto_total)}</td><td class="num">${p.cuotas_pagadas}/${p.cuotas_n}</td><td><span class="pill ${p.estado}">${p.estado}</span></td><td class="r num">${money(p.saldo)}</td></tr>`)}
+      </tbody></table></div>` : h`<p class="small muted">La familia no tiene planes de pago.</p>`}`,
     legajo: () => h`
-      <div class="table-wrap"><table><thead><tr><th>Alumno</th><th>DNI</th><th>Curso</th><th class="r">Beca</th><th>Estado</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Alumno</th><th>DNI</th><th>Curso</th><th class="r">Beca</th><th class="r">Cuota mensual</th><th>Estado</th></tr></thead><tbody>
         ${d.alumnos.map((a) => h`<tr class="link" data-href="#/alumnos/${a.id}"><td><a href="#/alumnos/${a.id}"><b>${a.nombre} ${a.apellido}</b></a></td><td class="num">${a.dni || '—'}</td><td>${a.grado}° ${a.seccion}</td>
-          <td class="r num">${a.beca_pct ? a.beca_pct + '%' : '—'}</td><td>${a.estado === 'activo' ? 'Activo' : h`${a.estado === 'egresado' ? 'Egresado' : 'Baja'} <span class="small muted">${fdate(a.fecha_baja)}</span>`}</td></tr>`)}
+          <td class="r num">${a.beca_pct ? a.beca_pct + '%' : '—'}</td><td class="r num">${(() => { const x = d.desglose_cuota.find((q) => q.alumno_id === a.id); return x ? h`${money(x.monto)}${detalleCuota(x)}` : '—'; })()}</td><td>${a.estado === 'activo' ? 'Activo' : h`${a.estado === 'egresado' ? 'Egresado' : 'Baja'} <span class="small muted">${fdate(a.fecha_baja)}</span>`}</td></tr>`)}
       </tbody></table></div>
       <div class="btn-row mt"><button class="btn sm" id="b-alumno">+ Alta de alumno en esta familia</button></div>
       <div class="principles mt">
@@ -511,7 +594,14 @@ async function pageFamilia(id) {
   const renderTab = () => {
     $$('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tabFamilia));
     $('#tab').innerHTML = String(tabs[tabFamilia]());
-    $$('[data-pagar]').forEach((b) => b.addEventListener('click', () => modalPago(d, Number(b.dataset.pagar))));
+    $$('[data-pagar]').forEach((b) => b.addEventListener('click', () => modalCobro(d, { cuotaId: Number(b.dataset.pagar) })));
+    $$('[data-condonar]').forEach((b) => b.addEventListener('click', () => modalCondonar(d.cuotas.find((c) => c.id === Number(b.dataset.condonar)))));
+    $$('[data-anular]').forEach((b) => b.addEventListener('click', () => modalAnularCobro(d.cobros.find((c) => c.id === Number(b.dataset.anular)))));
+    $$('[data-anular-promesa]').forEach((b) => b.addEventListener('click', async () => {
+      await api(`/api/promesas/${b.dataset.anularPromesa}/anular`, { method: 'POST' });
+      toast('Promesa anulada');
+      reload();
+    }));
     $$('[data-com]').forEach((c) => c.addEventListener('change', async () => {
       const fila = $$(`[data-com="${c.dataset.com}"]`);
       const body = Object.fromEntries(fila.map((x) => [x.dataset.k, x.checked]));
@@ -528,37 +618,37 @@ async function pageFamilia(id) {
     label: MESES[Number(x.periodo.slice(5, 7)) - 1], title: fperiodo(x.periodo), puntaje: x.puntaje, extra: ['Atraso real', x.atraso == null ? 'por vencer' : x.atraso + ' días'],
   })), [{ key: 'puntaje', label: 'Puntaje de riesgo', color: 'var(--brand-2)' }], { fmt: String, fmtAxis: (v) => String(Math.round(v)), height: 220, width: 380 });
 
-  $('#b-pago').addEventListener('click', () => modalPago(d));
-  $('#b-plan').addEventListener('click', () => modalPlan(f.id, d.resumen.deuda_vencida));
+  const cerrarMenu = () => $('details.menu')?.removeAttribute('open');
+  $('#b-cobro').addEventListener('click', () => modalCobro(d));
+  $('#b-promesa').addEventListener('click', () => modalPromesa(f.id, res.deuda_vencida, d.hoy));
+  $('#b-plan').addEventListener('click', () => modalPlan(f.id, res.deuda_vencida, res.deuda_recargos));
   $('#b-contacto').addEventListener('click', () => modalContacto(f.id));
-  $('#b-editar').addEventListener('click', () => modalFamilia(f));
+  $('#m-nc').addEventListener('click', () => { cerrarMenu(); modalNotaCredito(d); });
+  $('#m-cargo').addEventListener('click', () => { cerrarMenu(); modalCargo({ familiaId: f.id }); });
+  $('#m-rechazo').addEventListener('click', () => { cerrarMenu(); modalRechazo(d); });
+  $('#m-reclamo').addEventListener('click', () => {
+    cerrarMenu();
+    openModal({
+      title: 'Registrar reclamo o pedido de pase',
+      body: h`<p class="small muted" style="margin-top:0">Se usa para detectar a tiempo el riesgo de baja y que dirección pueda acompañar a la familia.</p>
+        <div class="form-grid"><label class="field full">Tipo<select name="tipo"><option value="reclamo">Reclamo</option><option value="pedido_pase">Pedido de documentación para pase</option></select></label>
+        <label class="field full">Detalle<textarea name="detalle" required maxlength="1000" placeholder="Qué planteó la familia"></textarea></label></div>`,
+      submit: 'Registrar',
+      onSubmit: async (data) => { await api(`/api/familias/${f.id}/eventos`, { method: 'POST', body: data }); toast('Registrado'); reload(); },
+    });
+  });
+  $('#m-editar').addEventListener('click', () => { cerrarMenu(); modalFamilia(f); });
+  $('#m-aplicar')?.addEventListener('click', async () => {
+    cerrarMenu();
+    const x = await api(`/api/familias/${f.id}/aplicar-saldo`, { method: 'POST' });
+    toast(x.aplicado ? `Se aplicaron ${money(x.aplicado)} del saldo a favor` : 'No hay cargos pendientes donde aplicar el saldo');
+    reload();
+  });
 }
 
 // ---------- Modales de acciones ----------
-function modalPago(d, cuotaId) {
-  const abiertas = d.cuotas.filter((c) => c.saldo > 0).reverse();
-  const sel = cuotaId || abiertas[0]?.id;
-  openModal({
-    title: 'Registrar pago',
-    body: h`<div class="form-grid">
-      <label class="field full">Cuota<select name="cuota_id" id="p-cuota">${abiertas.map((c) => h`<option value="${c.id}" data-saldo="${c.saldo}" ${c.id === sel ? 'selected' : ''}>${c.concepto} · vence ${fdate(c.vencimiento)} · saldo ${money(c.saldo)}</option>`)}</select></label>
-      <label class="field">Monto<input name="monto" id="p-monto" type="number" min="1" step="1" required></label>
-      <label class="field">Fecha<input name="fecha" type="date" value="${d.hoy}" required></label>
-      <label class="field">Medio<select name="medio">${Object.entries(MEDIO).map(([k, l]) => h`<option value="${k}" ${k === d.familia.medio_pago ? 'selected' : ''}>${l}</option>`)}</select></label>
-      <label class="field check" style="align-self:end"><input type="checkbox" name="rechazado"> Débito rechazado</label>
-    </div>`,
-    onSubmit: async (data) => {
-      await api('/api/pagos', { method: 'POST', body: data });
-      toast(data.rechazado ? 'Rechazo registrado' : 'Pago registrado');
-      reload();
-    },
-  });
-  const sync = () => { $('#p-monto').value = $('#p-cuota').selectedOptions[0]?.dataset.saldo || ''; };
-  $('#p-cuota').addEventListener('change', sync);
-  sync();
-}
 
-async function modalPlan(familiaId, deuda) {
+async function modalPlan(familiaId, deuda, recargos = 0) {
   const cfg = await api('/api/config');
   openModal({
     title: 'Plan de pagos a medida',
@@ -567,6 +657,7 @@ async function modalPlan(familiaId, deuda) {
         <label class="field">Cantidad de cuotas<input name="cuotas_n" type="number" min="1" max="24" value="3" required></label>
         <label class="field">Primer vencimiento<input name="primer_vencimiento" type="date" value="${addDays(cfg.hoy, 7)}" required></label>
         <label class="field check full"><input type="checkbox" name="incluir_pendientes"> Incluir también las cuotas por vencer</label>
+        ${recargos ? h`<label class="field check full"><input type="checkbox" name="condonar_recargos" checked> Condonar los recargos por mora (${money(recargos)}) con nota de crédito</label>` : ''}
         <label class="field full">Nota del acuerdo<textarea name="nota" placeholder="Ej.: acordado por teléfono con la madre; revisar en marzo"></textarea></label>
       </div>`,
     submit: 'Crear plan',
@@ -620,44 +711,59 @@ function modalFamilia(f) {
 
 // ---------- Cuotas ----------
 let filtroCuotas = '';
+let tipoCuotas = 'arancel';
+const TIPOS_CUOTAS = [['arancel', 'Aranceles'], ['cargo', 'Cargos'], ['recargo', 'Recargos'], ['plan', 'Planes de pago']];
 async function pageCuotas(periodoArg) {
-  const d = await api('/api/cuotas' + (periodoArg ? '?periodo=' + periodoArg : ''));
+  const qs = new URLSearchParams({ tipo: tipoCuotas, ...(periodoArg ? { periodo: periodoArg } : {}) });
+  const d = await api('/api/cuotas?' + qs);
   const r = d.resumen;
   const cuotas = filtroCuotas ? d.cuotas.filter((c) => c.estado === filtroCuotas) : d.cuotas;
   const cobrado = r ? r.en_termino + r.con_atraso : 0;
+  const rec = d.recargos_por_liquidar;
   main.innerHTML = String(h`
     <div class="page-head"><div>
-      <div class="eyebrow">Cuotas y facturación</div><h1>Cuotas de ${fperiodo(d.periodo)}</h1>
-      <p>Aranceles por alumno con becas y descuento por hermanos, vencimientos y medios de pago.</p>
+      <div class="eyebrow">Cobranzas</div><h1>Cuotas y cargos${d.periodo ? h` · ${fperiodo(d.periodo)}` : ''}</h1>
+      <p>Aranceles con becas y descuento por hermano, cargos adicionales (matrícula, materiales…), recargos por mora y cuotas de planes de pago.</p>
     </div>
     <div class="btn-row">
-      <select id="periodo" aria-label="Período">${d.periodos.map((p) => h`<option value="${p}" ${p === d.periodo ? 'selected' : ''}>${fperiodo(p)}</option>`)}</select>
-      <button class="btn primary" id="generar">Generar cuotas…</button>
+      ${d.periodos.length ? h`<select id="periodo" aria-label="Período">${d.periodos.map((p) => h`<option value="${p}" ${p === d.periodo ? 'selected' : ''}>${fperiodo(p)}</option>`)}</select>` : ''}
+      <button class="btn" id="liquidar">Liquidar recargos${rec.creados ? ` (${rec.creados})` : ''}</button>
+      <button class="btn" id="cargo-masivo">Cargo masivo…</button>
+      <button class="btn primary" id="generar">Generar aranceles…</button>
     </div></div>
-    ${d.sugerido_generar ? h`<div class="notice">Todavía no se generaron las cuotas de <b>${fperiodo(d.sugerido_generar)}</b>. <button class="btn sm" id="gen-sug">Generar ahora</button></div>` : ''}
-    ${r ? h`<div class="grid g-3">
+    ${d.sugerido_generar ? h`<div class="notice">Todavía no se generaron los aranceles de <b>${fperiodo(d.sugerido_generar)}</b>. <button class="btn sm" id="gen-sug">Generar ahora</button></div>` : ''}
+    ${rec.activo && rec.creados ? h`<div class="notice">Hay <b>${rec.creados}</b> recargo(s) por mora sin liquidar por ${money(rec.monto)}.</div>` : ''}
+    <div class="seg tipo-seg" role="group" aria-label="Tipo de cargo">${TIPOS_CUOTAS.map(([k, l]) => h`<button class="${tipoCuotas === k ? 'on' : ''}" data-tipo="${k}">${l}</button>`)}</div>
+    ${r ? h`<div class="grid g-3 mt">
       <div class="card kpi"><span class="label">Facturado</span><span class="value">${money(r.facturado)}</span><span class="sub">${d.cuotas.length} cuotas</span></div>
       <div class="card kpi"><span class="label">Cobrado</span><span class="value">${money(cobrado)}</span><span class="sub">${pct(r.facturado ? r.en_termino / r.facturado : 0, 0)} en término</span></div>
       <div class="card kpi"><span class="label">Impago o en plan</span><span class="value">${money(r.impago)}</span><span class="sub">Mora de más de 30 días: ${pct(r.tasa_mora)}</span></div>
-    </div>` : ''}
+    </div>` : h`<div class="grid g-3 mt">
+      <div class="card kpi"><span class="label">Emitido en el período</span><span class="value">${money(d.totales.monto)}</span><span class="sub">${d.cuotas.length} cargo(s)</span></div>
+      <div class="card kpi"><span class="label">Pendiente de cobro</span><span class="value">${money(d.totales.saldo)}</span><span class="sub">${pct(d.totales.monto ? 1 - d.totales.saldo / d.totales.monto : 0, 0)} ya cobrado</span></div>
+      <div class="card kpi"><span class="label">Familias</span><span class="value">${new Set(d.cuotas.map((c) => c.familia_id)).size}</span><span class="sub">con cargos de este tipo en el período</span></div>
+    </div>`}
     <div class="card mt">
       <div class="filters">
         <div class="seg" role="group" aria-label="Estado">${[['', 'Todas'], ['pagada', 'Pagadas'], ['pendiente', 'Por vencer'], ['vencida', 'Vencidas'], ['refinanciada', 'En plan']]
           .map(([k, l]) => h`<button class="${filtroCuotas === k ? 'on' : ''}" data-f="${k}">${l}</button>`)}</div>
       </div>
-      ${cuotas.length ? h`<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Vencimiento</th><th class="r">Monto</th><th class="r">Saldo</th><th>Estado</th><th>Pago</th><th class="r">Atraso</th><th>Riesgo actual</th></tr></thead><tbody>
-        ${cuotas.map((c) => h`<tr class="link" data-href="#/familias/${c.familia_id}"><td><b>${c.familia}</b><div class="small muted">${c.responsable}</div></td><td class="num">${fdate(c.vencimiento)}</td>
+      ${cuotas.length ? h`<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Concepto</th><th>Vencimiento</th><th class="r">Monto</th><th class="r">Saldo</th><th>Estado</th><th>Pago</th><th class="r">Atraso</th><th>Riesgo actual</th></tr></thead><tbody>
+        ${cuotas.map((c) => h`<tr class="link" data-href="#/familias/${c.familia_id}"><td><b>${c.familia}</b><div class="small muted">${c.responsable}</div></td><td class="small">${c.concepto}</td><td class="num">${fdate(c.vencimiento)}</td>
           <td class="r num">${money(c.monto)}</td><td class="r num">${c.saldo ? money(c.saldo) : '—'}</td><td>${estadoPill(c.estado)}</td><td class="num small">${fdate(c.fecha_pago)}</td>
           <td class="r num">${c.atraso ? c.atraso + ' d' : '—'}</td><td>${nivelPill(c.nivel)}</td></tr>`)}
-      </tbody></table></div>` : h`<div class="empty">No hay cuotas con ese estado.</div>`}
+      </tbody></table></div>` : h`<div class="empty">No hay cargos con ese estado.</div>`}
     </div>`);
-  $('#periodo').addEventListener('change', (e) => { location.hash = '#/cuotas/' + e.target.value; });
+  $('#periodo')?.addEventListener('change', (e) => { location.hash = '#/cuotas/' + e.target.value; });
   $$('[data-f]').forEach((b) => b.addEventListener('click', () => { filtroCuotas = b.dataset.f; pageCuotas(d.periodo); }));
+  $$('[data-tipo]').forEach((b) => b.addEventListener('click', () => { tipoCuotas = b.dataset.tipo; filtroCuotas = ''; pageCuotas(); }));
   $('#gen-sug')?.addEventListener('click', () => generar(d.sugerido_generar));
+  $('#liquidar').addEventListener('click', liquidarRecargos);
+  $('#cargo-masivo').addEventListener('click', () => modalCargo());
   $('#generar').addEventListener('click', () => openModal({
-    title: 'Generar cuotas de un período',
+    title: 'Generar aranceles de un período',
     body: h`<label class="field">Período<input name="periodo" type="month" value="${d.sugerido_generar || d.periodo}" required></label>
-      <p class="small muted">Se crea una cuota por familia activa con el arancel vigente. Si ya existe, no se duplica.</p>`,
+      <p class="small muted">Se crea una cuota por familia activa con el arancel vigente. Si ya existe, no se duplica. Las familias con saldo a favor la cancelan automáticamente.</p>`,
     submit: 'Generar',
     onSubmit: (data) => generar(data.periodo),
   }));
@@ -665,7 +771,8 @@ async function pageCuotas(periodoArg) {
 }
 async function generar(periodo) {
   const r = await api('/api/cuotas/generar', { method: 'POST', body: { periodo } });
-  toast(`${r.creadas} cuota(s) generadas para ${fperiodo(r.periodo)}, vencen el ${fdate(r.vencimiento)}`);
+  toast(`${r.creadas} cuota(s) generadas para ${fperiodo(r.periodo)}, vencen el ${fdate(r.vencimiento)}` + (r.saldo_a_favor_aplicado ? ` · se aplicaron ${money(r.saldo_a_favor_aplicado)} de saldos a favor` : ''));
+  tipoCuotas = 'arancel';
   const destino = '#/cuotas/' + r.periodo;
   if (location.hash === destino) reload();
   else location.hash = destino;
@@ -676,9 +783,17 @@ async function pagePlanes() {
   const d = await api('/api/planes');
   main.innerHTML = String(h`
     <div class="page-head"><div>
-      <div class="eyebrow">Gestión</div><h1>Planes de pago</h1>
-      <p>Propuestas de cuotas a medida, con acuerdo por escrito. Se miden como "planes cumplidos" en el tablero.</p>
+      <div class="eyebrow">Cobranzas</div><h1>Planes y promesas</h1>
+      <p>Acuerdos con las familias: promesas de pago a corto plazo y planes de cuotas a medida, con acuerdo por escrito.</p>
     </div></div>
+    <div class="card">
+      <div class="card-head"><div><h2>Promesas de pago</h2><p>Mientras una promesa está vigente, la familia sale de la bandeja; si vence sin pago, vuelve con prioridad</p></div></div>
+      ${d.promesas.length ? h`<div class="table-wrap"><table><thead><tr><th>Familia</th><th>Registrada</th><th>Fecha prometida</th><th class="r">Importe</th><th class="r">Cobrado</th><th>Estado</th><th>Nota</th><th class="r">Deuda actual</th></tr></thead><tbody>
+        ${d.promesas.map((p) => h`<tr class="link" data-href="#/familias/${p.familia_id}"><td><b>${p.familia}</b><div class="small muted">${p.responsable}</div></td>
+          <td class="num">${fdate(p.fecha_registro)}</td><td class="num">${fdate(p.fecha_promesa)}</td><td class="r num">${money(p.monto)}</td><td class="r num">${money(p.cobrado)}</td>
+          <td>${promesaPill(p.estado)}</td><td class="small">${p.nota}</td><td class="r num">${p.deuda ? money(p.deuda) : '—'}</td></tr>`)}
+      </tbody></table></div>` : h`<div class="empty">No hay promesas registradas.</div>`}
+    </div>
     <div class="card">
       <div class="card-head"><div><h2>Pedidos desde el portal</h2><p>Familias que pidieron un plan de pagos</p></div></div>
       ${d.solicitudes.length ? h`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Familia</th><th>Pedido</th><th class="r">Deuda</th><th>Riesgo</th><th></th></tr></thead><tbody>
@@ -764,6 +879,13 @@ async function pageConfig() {
           <span></span>
           <label class="field">Umbral riesgo medio<input name="umbral_medio" type="number" min="1" max="99" value="${s.umbral_medio}"></label>
           <label class="field">Umbral riesgo alto<input name="umbral_alto" type="number" min="2" max="100" value="${s.umbral_alto}"></label>
+          <h3 class="form-sec full">Cobranza</h3>
+          <div class="field full"><input type="hidden" name="recargo_activo" value="0">
+            <label class="field check"><input type="checkbox" name="recargo_activo" value="1" ${s.recargo_activo === '1' ? 'checked' : ''}> Aplicar recargos por mora</label></div>
+          <label class="field">Recargo mensual (%) <small>Sobre el saldo de cada cuota impaga</small><input name="recargo_pct" type="number" min="0" max="20" step="0.1" value="${s.recargo_pct}"></label>
+          <label class="field">Días de gracia <small>Desde el vencimiento, sin recargo</small><input name="recargo_dias_gracia" type="number" min="0" max="60" value="${s.recargo_dias_gracia}"></label>
+          <label class="field">Punto de venta de los recibos<input name="punto_venta" inputmode="numeric" maxlength="5" value="${s.punto_venta}"></label>
+          <span></span>
           <label class="field full">Fecha simulada <small>Para demos: el sistema se comporta como si hoy fuera esta fecha. Vacío = fecha real.</small>
             <input name="fecha_simulada" type="date" value="${s.fecha_simulada}"></label>
         </div>

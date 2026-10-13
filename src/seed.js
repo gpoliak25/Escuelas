@@ -5,6 +5,7 @@
 const db_ = require('./db');
 const { isoToday, addDays, diffDays, getSettings, setSettings, tx } = db_;
 const { montoFamilia, conceptoArancel, nuevoCodigoPortal } = require('./services');
+const C = require('./cobranzas');
 
 const APELLIDOS = ['González', 'Rodríguez', 'Fernández', 'López', 'Martínez', 'Pérez', 'Gómez', 'Díaz', 'Sánchez', 'Romero',
   'Sosa', 'Álvarez', 'Torres', 'Ruiz', 'Ramírez', 'Flores', 'Acosta', 'Benítez', 'Medina', 'Suárez', 'Herrera', 'Aguirre',
@@ -57,7 +58,7 @@ function seed(db, { seed: semilla = 42 } = {}) {
   const hoy = isoToday();
 
   tx(db, () => {
-    for (const t of ['asistencia', 'pagos', 'comunicaciones', 'eventos', 'cuotas', 'planes', 'alumnos', 'familias', 'cursos']) db.exec(`DELETE FROM ${t}`);
+    for (const t of ['asistencia', 'pagos', 'cobros', 'promesas', 'lotes_debito', 'comunicaciones', 'eventos', 'cuotas', 'planes', 'alumnos', 'familias', 'cursos']) db.exec(`DELETE FROM ${t}`);
     setSettings(db, { fecha_simulada: '' });
   });
   const settings = getSettings(db);
@@ -276,14 +277,106 @@ function seed(db, { seed: semilla = 42 } = {}) {
     }
   });
 
+  // ---- Cobranzas: recibos de los pagos, recargos por mora, adelantos y promesas de ejemplo ----
+  db.exec("UPDATE cuotas SET tipo = 'plan' WHERE plan_id IS NOT NULL");
+  inyectarCasos(db, hoy, settings);
+  db_.vincularPagosSinCobro(db);
+  C.liquidarRecargos(db);
+  const conDeuda = db.prepare(`SELECT c.familia_id, SUM(c.monto) AS deuda, MIN(c.vencimiento) AS desde FROM cuotas c
+    WHERE c.vencimiento < ? AND c.refinanciada_en IS NULL AND c.tipo IN ('arancel', 'plan')
+      AND c.monto > COALESCE((SELECT SUM(p.monto) FROM pagos p WHERE p.cuota_id = c.id AND p.rechazado = 0), 0)
+    GROUP BY c.familia_id ORDER BY c.familia_id`).all(hoy);
+  const insProm = db.prepare('INSERT INTO promesas (familia_id, fecha_registro, fecha_promesa, monto, nota) VALUES (?, ?, ?, ?, ?)');
+  // Una promesa vigente y una incumplida, en familias con deuda de un solo mes
+  const chicas = conDeuda.filter((f) => f.deuda <= 360000);
+  if (chicas[0]) insProm.run(chicas[0].familia_id, addDays(hoy, -2), addDays(hoy, 6), chicas[0].deuda, 'Llamado telefónico: cobra a fin de mes y paga el total');
+  if (chicas[1]) insProm.run(chicas[1].familia_id, addDays(hoy, -20), addDays(hoy, -9), chicas[1].deuda, 'Se comprometió por WhatsApp a pagar en una semana');
+  // Una promesa cumplida: un pago reciente que había sido prometido
+  const reciente = db.prepare(`SELECT * FROM cobros WHERE estado = 'vigente' AND fecha BETWEEN ? AND ? ORDER BY fecha DESC LIMIT 1`).get(addDays(hoy, -25), addDays(hoy, -5));
+  if (reciente) insProm.run(reciente.familia_id, addDays(reciente.fecha, -6), addDays(reciente.fecha, 1), reciente.monto, 'Acordado en la reunión de padres');
+  // Un adelanto: una familia al día paga dos meses y le queda saldo a favor
+  const alDia = db.prepare(`SELECT f.id FROM familias f WHERE f.medio_pago = 'transferencia'
+    AND NOT EXISTS (SELECT 1 FROM cuotas c WHERE c.familia_id = f.id AND c.vencimiento < ? AND c.refinanciada_en IS NULL
+      AND c.monto > COALESCE((SELECT SUM(p.monto) FROM pagos p WHERE p.cuota_id = c.id AND p.rechazado = 0), 0))
+    ORDER BY f.id LIMIT 1`).get(hoy);
+  if (alDia) {
+    const abiertas = C.cargosAbiertos(db, alDia.id);
+    const total = abiertas.reduce((a, c) => a + c.saldo, 0);
+    if (total) C.registrarCobro(db, { familia_id: alDia.id, monto: total + 50000, medio: 'transferencia', fecha: addDays(hoy, -1), referencia: 'Adelanto de cuotas' });
+  }
+  // Un cobro cargado dos veces el mismo día (para la detección de anomalías)
+  const dup = db.prepare(`SELECT * FROM cobros WHERE estado = 'vigente' AND tipo = 'recibo' AND medio = 'efectivo' AND fecha >= ?
+    ORDER BY fecha DESC, id LIMIT 1`).get(addDays(hoy, -20));
+  if (dup) C.registrarCobro(db, { familia_id: dup.familia_id, monto: dup.monto, medio: dup.medio, fecha: dup.fecha });
+
   return {
     familias: db.prepare('SELECT COUNT(*) n FROM familias').get().n,
+    cobros: db.prepare('SELECT COUNT(*) n FROM cobros').get().n,
+    recargos: db.prepare("SELECT COUNT(*) n FROM cuotas WHERE tipo = 'recargo'").get().n,
     asistencia: db.prepare('SELECT COUNT(*) n FROM asistencia').get().n,
     alumnos: db.prepare('SELECT COUNT(*) n FROM alumnos').get().n,
     cuotas: db.prepare('SELECT COUNT(*) n FROM cuotas').get().n,
     pagos: db.prepare('SELECT COUNT(*) n FROM pagos').get().n,
     comunicaciones: db.prepare('SELECT COUNT(*) n FROM comunicaciones').get().n,
   };
+}
+
+/**
+ * Casos de ejemplo de la presentación, para que la inteligencia de cobranza tenga qué mostrar:
+ * un atraso estacional, una familia puntual que se atrasa por primera vez, un error de facturación
+ * y señales de riesgo de baja. Todo ficticio.
+ */
+function inyectarCasos(db, hoy, settings) {
+  const saldoOk = (cuotaId) => db.prepare('SELECT COALESCE(SUM(monto), 0) AS s FROM pagos WHERE cuota_id = ? AND rechazado = 0').get(cuotaId).s;
+  const puntuales = db.prepare(`SELECT f.id, f.apellido, (SELECT COUNT(*) FROM alumnos a WHERE a.familia_id = f.id AND a.estado = 'activo') AS hijos
+    FROM familias f WHERE NOT EXISTS (
+      SELECT 1 FROM cuotas c JOIN pagos p ON p.cuota_id = c.id AND p.rechazado = 0
+      WHERE c.familia_id = f.id AND c.tipo = 'arancel' AND p.fecha > c.vencimiento)
+    AND NOT EXISTS (SELECT 1 FROM pagos p WHERE p.familia_id = f.id AND p.rechazado = 1)
+    ORDER BY f.id`).all();
+  const usados = new Set();
+  const tomar = (pred) => { const f = puntuales.find((x) => !usados.has(x.id) && pred(x)); if (f) usados.add(f.id); return f; };
+
+  // 1. Tardío estacional: paga 12 días tarde en marzo, julio y diciembre
+  const est = tomar((f) => f.hijos === 1);
+  if (est) {
+    for (const c of db.prepare("SELECT * FROM cuotas WHERE familia_id = ? AND tipo = 'arancel' AND CAST(substr(periodo, 6, 2) AS INTEGER) IN (3, 7, 12) AND vencimiento < ?").all(est.id, addDays(hoy, -15))) {
+      db.prepare('UPDATE pagos SET fecha = ? WHERE cuota_id = ? AND rechazado = 0').run(addDays(c.vencimiento, 12), c.id);
+    }
+  }
+
+  // 2. Puntual de siempre (3 hijos) que deja impaga la última cuota vencida
+  const anom = tomar((f) => f.hijos === 3) || tomar((f) => f.hijos === 2);
+  if (anom) {
+    const c = db.prepare("SELECT * FROM cuotas WHERE familia_id = ? AND tipo = 'arancel' AND vencimiento < ? ORDER BY vencimiento DESC LIMIT 1").get(anom.id, hoy);
+    if (c) db.prepare('DELETE FROM pagos WHERE cuota_id = ?').run(c.id);
+  }
+
+  // 3. Error de facturación: a una familia con dos hijos no se le aplicó el descuento por hermano
+  const err = db.prepare(`SELECT c.id, c.familia_id FROM cuotas c WHERE c.tipo = 'arancel' AND c.vencimiento >= ? AND c.vencimiento <= ?
+      AND (SELECT COUNT(*) FROM alumnos a WHERE a.familia_id = c.familia_id AND a.estado = 'activo' AND a.beca_pct = 0) = 2
+      AND NOT EXISTS (SELECT 1 FROM pagos p WHERE p.cuota_id = c.id) ORDER BY c.familia_id LIMIT 1`).get(hoy, addDays(hoy, 31));
+  if (err) db.prepare('UPDATE cuotas SET monto = ? WHERE id = ?').run(2 * Number(settings.arancel_mensual), err.id);
+
+  // 4. Riesgo de baja: la familia con más cuotas vencidas suma un reclamo y faltas de su hijo
+  const deudora = db.prepare(`SELECT c.familia_id, COUNT(*) AS n FROM cuotas c
+      WHERE c.tipo IN ('arancel', 'plan') AND c.refinanciada_en IS NULL AND c.vencimiento < ?
+      GROUP BY c.familia_id HAVING SUM(c.monto) > SUM((SELECT COALESCE(SUM(p.monto), 0) FROM pagos p WHERE p.cuota_id = c.id AND p.rechazado = 0)) + 1
+      ORDER BY n DESC, c.familia_id LIMIT 1`).get(hoy);
+  const ev = db.prepare('INSERT INTO eventos (familia_id, fecha, tipo, detalle, atendido) VALUES (?, ?, ?, ?, 0)');
+  if (deudora) {
+    ev.run(deudora.familia_id, addDays(hoy, -12), 'reclamo', 'Reclamo por nota: disconformidad con el último aumento de la cuota.');
+    for (const a of db.prepare("SELECT id FROM alumnos WHERE familia_id = ? AND estado = 'activo'").all(deudora.familia_id)) {
+      const filas = db.prepare("SELECT id FROM asistencia WHERE alumno_id = ? AND fecha > ? ORDER BY fecha").all(a.id, addDays(hoy, -30));
+      filas.forEach((r, i) => { if (i % 4 === 0) db.prepare("UPDATE asistencia SET estado = 'ausente', justificada = 0 WHERE id = ?").run(r.id); });
+    }
+  }
+  // 5. Otra familia con deuda pide documentación para un pase
+  const otra = db.prepare(`SELECT DISTINCT c.familia_id FROM cuotas c WHERE c.tipo = 'arancel' AND c.vencimiento < ? AND c.refinanciada_en IS NULL
+      AND c.monto > (SELECT COALESCE(SUM(p.monto), 0) FROM pagos p WHERE p.cuota_id = c.id AND p.rechazado = 0) + 1
+      AND c.familia_id <> ? ORDER BY c.familia_id LIMIT 1`).get(hoy, deudora ? deudora.familia_id : 0);
+  if (otra) ev.run(otra.familia_id, addDays(hoy, -6), 'pedido_pase', 'Pidió constancia de alumno regular y libreta para un posible pase de escuela.');
+  return { estacional: est?.id, anomalia: anom?.id, error: err?.familia_id, saldo: saldoOk };
 }
 
 module.exports = { seed };

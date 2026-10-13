@@ -161,3 +161,134 @@ test('estadísticas generales sobre los datos de demo', () => {
   assert.ok(s.asistencia.pct.media > 80 && s.asistencia.pct.media <= 100);
   assert.ok(s.cobranza.correlacion.r > 0);
 });
+
+// ---- Cobranzas ----
+const C = require('../src/cobranzas');
+
+function familiaConDeuda(db) {
+  const L = D.loadLedger(db);
+  return [...L.byFam.values()].find((f) => f.deuda_vencida > 0 && !f.promesa && !f.planes.some((p) => p.estado === 'activo'));
+}
+
+test('cobro: imputa a la deuda más antigua y deja el excedente como saldo a favor', () => {
+  const db = fresh();
+  const fam = familiaConDeuda(db);
+  const abiertas = C.cargosAbiertos(db, fam.familia.id);
+  const total = abiertas.reduce((a, c) => a + c.saldo, 0);
+  const r = C.registrarCobro(db, { familia_id: fam.familia.id, monto: total + 1000, medio: 'efectivo' });
+  assert.equal(r.imputaciones[0].cuota_id, abiertas[0].id); // la más antigua primero
+  assert.equal(r.saldo_a_favor, 1000);
+  assert.match(r.comprobante, /^0001-\d{8}$/);
+  const L = D.loadLedger(db);
+  const f2 = L.byFam.get(fam.familia.id);
+  assert.equal(f2.deuda_vencida, 0);
+  assert.equal(f2.saldo_a_favor, 1000);
+});
+
+test('cobro parcial y anulación: la deuda vuelve a quedar pendiente', () => {
+  const db = fresh();
+  const fam = familiaConDeuda(db);
+  const deuda = fam.deuda_vencida;
+  const r = C.registrarCobro(db, { familia_id: fam.familia.id, monto: 1000, medio: 'transferencia' });
+  assert.equal(D.loadLedger(db).byFam.get(fam.familia.id).deuda_vencida, deuda - 1000);
+  C.anularCobro(db, r.id, { motivo: 'Transferencia no acreditada' });
+  assert.equal(D.loadLedger(db).byFam.get(fam.familia.id).deuda_vencida, deuda);
+  assert.throws(() => C.anularCobro(db, r.id, { motivo: 'otra vez' }), /no está vigente/);
+});
+
+test('cuenta corriente: el saldo concilia con deuda, saldo a favor y pagos adelantados', () => {
+  const L = D.loadLedger(fresh());
+  for (const fam of L.byFam.values()) {
+    const adelantado = fam.cuotas.filter((c) => c.vencimiento > L.hoy).reduce((a, c) => a + c.pagado, 0);
+    assert.equal(D.cuentaCorriente(L, fam).saldo, fam.deuda_vencida - fam.saldo_a_favor - adelantado, fam.familia.apellido);
+  }
+});
+
+test('recargos por mora: se liquidan una vez por mes de atraso y se pueden condonar', () => {
+  const db = fresh();
+  assert.equal(C.liquidarRecargos(db).creados, 0); // el seed ya los liquidó: es idempotente
+  const fam = familiaConDeuda(db);
+  const db2 = db;
+  const recargo = C.cargosAbiertos(db2, fam.familia.id).find((c) => c.tipo === 'recargo');
+  assert.ok(recargo, 'la familia con deuda debería tener recargos');
+  const r = C.condonar(db2, { cuota_ids: [recargo.id], motivo: 'Buena voluntad' });
+  assert.match(r.comprobante, /^NC /);
+  assert.ok(!C.cargosAbiertos(db2, fam.familia.id).some((c) => c.id === recargo.id));
+});
+
+test('cargo masivo por alumno y aplicación automática del saldo a favor', () => {
+  const db = fresh();
+  const L = D.loadLedger(db);
+  const conFavor = [...L.byFam.values()].find((f) => f.saldo_a_favor > 0);
+  assert.ok(conFavor, 'el seed incluye una familia con saldo a favor');
+  const r = C.crearCargo(db, { alcance: 'alumnos', concepto: 'Materiales 2027', monto: 20000, vencimiento: db_.addDays(db_.today(db), 20) });
+  assert.ok(r.creados > 50);
+  const again = C.crearCargo(db, { alcance: 'alumnos', concepto: 'Materiales 2027', monto: 20000, vencimiento: db_.addDays(db_.today(db), 20) });
+  assert.equal(again.creados, 0); // no duplica
+  const f2 = D.loadLedger(db).byFam.get(conFavor.familia.id);
+  assert.ok(f2.saldo_a_favor < conFavor.saldo_a_favor); // el saldo a favor pagó el cargo nuevo
+});
+
+test('promesa de pago: pausa la bandeja y se cumple con un cobro', () => {
+  const db = fresh();
+  const fam = familiaConDeuda(db);
+  const id = fam.familia.id;
+  C.crearPromesa(db, { familia_id: id, fecha_promesa: db_.addDays(db_.today(db), 5), monto: fam.deuda_vencida });
+  let L = D.loadLedger(db);
+  assert.equal(L.byFam.get(id).promesa.estado, 'pendiente');
+  assert.ok(!D.accionesPendientes(L).some((a) => a.familia_id === id));
+  C.registrarCobro(db, { familia_id: id, monto: fam.deuda_vencida, medio: 'efectivo' });
+  L = D.loadLedger(db);
+  assert.equal(L.byFam.get(id).promesas[0].estado, 'cumplida');
+  assert.throws(() => C.crearPromesa(db, { familia_id: id, fecha_promesa: db_.addDays(db_.today(db), -1), monto: 10 }), /pasada/);
+});
+
+test('débito automático: el lote acredita y registra rechazos', () => {
+  const db = fresh();
+  const periodo = db_.today(db).slice(0, 7);
+  const lote = C.loteDebito(db, periodo);
+  assert.ok(lote.length >= 2, 'hay familias adheridas con la cuota del mes pendiente');
+  const items = lote.map((x, i) => ({ cuota_id: x.cuota_id, rechazado: i === 0, motivo: 'Fondos insuficientes' }));
+  const r = C.procesarLote(db, { periodo, items });
+  assert.equal(r.rechazados, 1);
+  assert.equal(r.aceptados, lote.length - 1);
+  const pendientes = C.loteDebito(db, periodo);
+  assert.equal(pendientes.length, 1); // sólo queda el rechazado
+  assert.equal(pendientes[0].rechazos, 1);
+});
+
+test('deudores por antigüedad: los tramos suman el total vencido', () => {
+  const d = D.deudores(D.loadLedger(fresh()));
+  const t = d.totales;
+  assert.equal(t.d1_30 + t.d31_60 + t.d61_90 + t.d90, t.vencido);
+  assert.ok(d.filas.every((f) => f.vencido > 0));
+});
+
+// ---- Inteligencia de cobranza (ML) ----
+const ML = require('../src/ml');
+
+test('regresión logística: aprende un patrón separable y el AUC lo refleja', () => {
+  const X = [], y = [];
+  for (let i = 0; i < 200; i++) { const v = (i % 50) / 50; X.push([v, (i * 7) % 3]); y.push(v > 0.5 ? 1 : 0); }
+  const m = ML.entrenar(X, y);
+  assert.ok(ML.predecir(m, [0.9, 1]) > 0.8);
+  assert.ok(ML.predecir(m, [0.1, 1]) < 0.2);
+  assert.equal(ML.auc([0.1, 0.4, 0.35, 0.8], [0, 0, 1, 1]), 0.75);
+});
+
+test('inteligencia de cobranza sobre los datos de demo', () => {
+  const r = ML.inteligencia(fresh());
+  const ev = r.modelo.evaluacion;
+  assert.ok(ev && ev.ml.auc > 0.75, 'el modelo debe anticipar mejor que el azar');
+  assert.ok(r.segmentos.every((s) => s.familias > 0), 'los cuatro segmentos tienen familias');
+  assert.ok(r.segmentos.find((s) => s.key === 'tardio').estacionales >= 1, 'aparece el caso estacional');
+  assert.ok(r.priorizacion.lista.length > 0 && r.priorizacion.lista.every((f, i, a) => !i || a[i - 1].esperado >= f.esperado), 'ranking ordenado');
+  assert.equal(r.flujo.proyeccion.length, 3);
+  assert.ok(r.flujo.proyeccion.every((m) => m.esperado >= 0 && m.facturado > 0));
+  const titulos = r.anomalias.map((a) => a.titulo);
+  assert.ok(titulos.includes('Cambio brusco de comportamiento'));
+  assert.ok(titulos.includes('Posible cobro duplicado'));
+  assert.ok(titulos.includes('Importe distinto del esperado'));
+  assert.ok(r.bajas.some((b) => b.nivel === 'alto'), 'hay al menos un riesgo de baja alto');
+  assert.equal(r.simulacion.segmentos.length, 4);
+});

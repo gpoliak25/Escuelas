@@ -74,7 +74,6 @@ async function render() {
   $('#escuela').textContent = d.escuela;
   document.title = `Portal de familias · ${d.escuela}`;
   const abiertas = d.cuotas.filter((c) => c.saldo > 0);
-  const historial = d.cuotas.filter((c) => c.saldo === 0).slice(0, 12);
   const nombre = d.familia.responsable.split(' ')[0];
 
   app.innerHTML = `
@@ -85,7 +84,7 @@ async function render() {
     <div class="portal lift">
       <div class="grid g-2">
         <div class="card kpi"><span class="label">Saldo vencido</span><span class="value">${money(d.deuda_vencida)}</span>
-          <span class="sub">${d.deuda_vencida ? 'Podés pagarlo online o pedirnos un plan de pagos.' : '¡Estás al día! Gracias.'}</span></div>
+          <span class="sub">${d.deuda_vencida ? 'Podés pagarlo online o pedirnos un plan de pagos.' + (d.deuda_recargos ? ` Incluye ${money(d.deuda_recargos)} de recargos por mora.` : '') : d.saldo_a_favor ? `¡Estás al día! Tenés ${money(d.saldo_a_favor)} a favor para las próximas cuotas.` : '¡Estás al día! Gracias.'}</span></div>
         <div class="card kpi"><span class="label">Próximo vencimiento</span><span class="value">${d.proxima ? fdate(d.proxima.vencimiento) : '—'}</span>
           <span class="sub">${d.proxima ? `${esc(d.proxima.concepto)} · ${money(d.proxima.saldo)}` : 'No hay cuotas por vencer.'}</span></div>
       </div>
@@ -122,9 +121,10 @@ async function render() {
         </tbody></table></div></div>` : ''}
 
       <div class="card mt">
-        <div class="card-head"><div><h2>Pagos realizados</h2><p>Últimas cuotas pagadas</p></div></div>
-        ${historial.length ? `<div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Vencimiento</th><th>Pagada el</th><th class="r">Monto</th></tr></thead><tbody>
-          ${historial.map((c) => `<tr><td>${esc(c.concepto)}</td><td class="num">${fdate(c.vencimiento)}</td><td class="num">${fdate(c.fecha_pago)}</td><td class="r num">${money(c.monto)}</td></tr>`).join('')}
+        <div class="card-head"><div><h2>Mis recibos</h2><p>Comprobantes de los últimos pagos</p></div></div>
+        ${d.recibos.length ? `<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Medio</th><th class="r">Importe</th><th></th></tr></thead><tbody>
+          ${d.recibos.map((c) => `<tr><td class="num">${fdate(c.fecha)}</td><td class="num">${esc(c.comprobante)}</td><td>${esc(c.medio)}</td><td class="r num">${money(c.monto)}</td>
+            <td class="r"><a class="btn sm" href="/recibos/${c.id}" target="_blank" rel="noopener">Ver recibo</a></td></tr>`).join('')}
         </tbody></table></div>` : '<div class="empty">Todavía no hay pagos.</div>'}
       </div>
       <p class="small muted mt">Tus datos se tratan según la Ley 25.326 de Protección de Datos Personales.</p>
@@ -147,7 +147,7 @@ async function render() {
       <p class="small muted">Pago simulado para la demo. En producción se redirige a la pasarela de pago (Mercado Pago, Banelco, etc.).</p>`,
     'Pagar', async () => {
       const r = await api('/api/portal/pagar', { method: 'POST', body: { cuota_ids: ids } });
-      toast(`¡Listo! Registramos tu pago de ${money(r.total)}.`);
+      toast(`¡Listo! Registramos tu pago de ${money(r.total)}. Recibo ${r.comprobante}.`);
       render();
     });
   });

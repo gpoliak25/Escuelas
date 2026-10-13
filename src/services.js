@@ -4,10 +4,11 @@ const crypto = require('node:crypto');
 const { getSettings, today, tx, addMonths } = require('./db');
 const { HttpError, req, oneOf, num, fecha } = require('./validate');
 const E = require('./escolar');
+const C = require('./cobranzas');
 
 const MEDIOS = ['debito', 'transferencia', 'efectivo', 'online', 'tarjeta'];
 const CANALES = ['mail', 'whatsapp', 'llamada', 'reunion'];
-const ETAPAS = ['prevencion', 'vencimiento', 'contacto', 'plan', 'reunion', 'manual'];
+const ETAPAS = ['prevencion', 'vencimiento', 'contacto', 'plan', 'reunion', 'promesa', 'manual'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 const PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -25,16 +26,29 @@ function conceptoArancel(periodo) {
   return `Arancel ${MESES[m - 1]} ${y}`;
 }
 
+/**
+ * Cuota mensual de cada alumno activo: arancel, menos su beca y, del segundo hijo en adelante
+ * (ordenados por grado), menos el descuento por hermano. Misma regla que montoFamilia.
+ */
+function desgloseCuota(alumnos, settings) {
+  const arancel = Number(settings.arancel_mensual) || 0;
+  const desc = Number(settings.descuento_hermano_pct) || 0;
+  return alumnos
+    .filter((a) => a.activo)
+    .sort((a, b) => a.grado - b.grado || a.id - b.id)
+    .map((a, i) => {
+      const hermano = i > 0 ? desc : 0;
+      return {
+        alumno_id: a.id, nombre: a.nombre, grado: a.grado, seccion: a.seccion,
+        arancel, beca_pct: a.beca_pct, descuento_hermano_pct: hermano,
+        monto: Math.round(arancel * (1 - a.beca_pct / 100) * (1 - hermano / 100)),
+      };
+    });
+}
+
 /** Monto mensual de una familia: arancel por alumno, menos beca, menos descuento por hermano. */
 function montoFamilia(alumnos, settings) {
-  const arancel = Number(settings.arancel_mensual) || 0;
-  const desc = (Number(settings.descuento_hermano_pct) || 0) / 100;
-  return Math.round(
-    alumnos
-      .filter((a) => a.activo)
-      .sort((a, b) => a.grado - b.grado || a.id - b.id)
-      .reduce((tot, a, i) => tot + arancel * (1 - a.beca_pct / 100) * (i > 0 ? 1 - desc : 1), 0),
-  );
+  return desgloseCuota(alumnos, settings).reduce((tot, a) => tot + a.monto, 0);
 }
 
 // ---- Familias y alumnos ----
@@ -95,13 +109,16 @@ function generarCuotas(db, periodo) {
   const alumnosDe = db.prepare('SELECT * FROM alumnos WHERE familia_id = ?');
   const ins = db.prepare('INSERT OR IGNORE INTO cuotas (familia_id, periodo, concepto, monto, vencimiento) VALUES (?, ?, ?, ?, ?)');
   let creadas = 0;
+  let aplicado = 0;
   tx(db, () => {
     for (const f of familias) {
       const monto = montoFamilia(alumnosDe.all(f.id), s);
       if (monto > 0) creadas += ins.run(f.id, periodo, concepto, monto, venc).changes;
     }
+    // Las familias con saldo a favor cancelan automáticamente las cuotas nuevas
+    aplicado = C.aplicarSaldosAFavor(db);
   });
-  return { periodo, vencimiento: venc, creadas };
+  return { periodo, vencimiento: venc, creadas, saldo_a_favor_aplicado: aplicado };
 }
 
 function saldoCuota(db, cuotaId) {
@@ -111,19 +128,8 @@ function saldoCuota(db, cuotaId) {
   return { cuota: c, saldo: c.refinanciada_en ? 0 : Math.max(0, Math.round(c.monto - pagado)) };
 }
 
-function registrarPago(db, body) {
-  const cuotaId = num(body.cuota_id, 'cuota_id', { min: 1 });
-  const { cuota, saldo } = saldoCuota(db, cuotaId);
-  const rechazado = body.rechazado ? 1 : 0;
-  if (!rechazado && saldo <= 0) throw new HttpError(400, 'La cuota no tiene saldo pendiente');
-  const monto = body.monto === undefined || body.monto === '' ? saldo : num(body.monto, 'monto', { min: 1 });
-  if (!rechazado && monto > saldo) throw new HttpError(400, `El monto supera el saldo de la cuota ($${saldo})`);
-  const medio = oneOf(body.medio || 'transferencia', MEDIOS, 'medio');
-  const f = body.fecha ? fecha(body.fecha, 'fecha') : today(db);
-  const r = db.prepare('INSERT INTO pagos (familia_id, cuota_id, fecha, monto, medio, rechazado) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(cuota.familia_id, cuotaId, f, monto, medio, rechazado);
-  return Number(r.lastInsertRowid);
-}
+// El pago de una cuota puntual genera un recibo (ver cobranzas.js).
+const { registrarPago } = C;
 
 // ---- Planes de pago ----
 
@@ -134,9 +140,14 @@ function crearPlan(db, body) {
   const primera = body.primer_vencimiento ? fecha(body.primer_vencimiento, 'primer_vencimiento') : hoy;
   const incluirPendientes = Boolean(body.incluir_pendientes);
 
-  const cuotas = db.prepare('SELECT * FROM cuotas WHERE familia_id = ? AND refinanciada_en IS NULL ORDER BY vencimiento').all(familiaId)
-    .map((c) => ({ c, saldo: saldoCuota(db, c.id).saldo }))
-    .filter(({ c, saldo }) => saldo > 0 && (c.vencimiento < hoy || incluirPendientes));
+  // Opcionalmente se condonan los recargos por mora antes de refinanciar (con nota de crédito)
+  if (body.condonar_recargos) {
+    const recargos = C.cargosAbiertos(db, familiaId).filter((c) => c.tipo === 'recargo').map((c) => c.id);
+    if (recargos.length) C.condonar(db, { cuota_ids: recargos, motivo: 'Condonación de recargos al acordar plan de pagos' });
+  }
+  const cuotas = C.cargosAbiertos(db, familiaId)
+    .filter((c) => c.vencimiento < hoy || incluirPendientes)
+    .map((c) => ({ c, saldo: c.saldo }));
   if (!cuotas.length) throw new HttpError(400, 'La familia no tiene deuda para incluir en un plan');
   const total = cuotas.reduce((a, x) => a + x.saldo, 0);
 
@@ -145,7 +156,7 @@ function crearPlan(db, body) {
       .run(familiaId, hoy, total, n, String(body.nota || '').trim()).lastInsertRowid);
     const upd = db.prepare('UPDATE cuotas SET refinanciada_en = ? WHERE id = ?');
     for (const { c } of cuotas) upd.run(planId, c.id);
-    const ins = db.prepare('INSERT INTO cuotas (familia_id, periodo, concepto, monto, vencimiento, plan_id, plan_nro) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const ins = db.prepare("INSERT INTO cuotas (familia_id, periodo, concepto, monto, vencimiento, plan_id, plan_nro, tipo) VALUES (?, ?, ?, ?, ?, ?, ?, 'plan')");
     const base = Math.floor(total / n);
     for (let i = 1; i <= n; i++) {
       const venc = addMonths(primera, i - 1);
@@ -196,6 +207,6 @@ function atenderEvento(db, id) {
 module.exports = {
   HttpError, MEDIOS, CANALES, MESES,
   crearFamilia, actualizarFamilia, crearAlumno, actualizarAlumno, registrarCambioMedio,
-  generarCuotas, registrarPago, saldoCuota, crearPlan, montoFamilia, conceptoArancel,
+  generarCuotas, registrarPago, saldoCuota, crearPlan, montoFamilia, desgloseCuota, conceptoArancel,
   registrarComunicacion, marcarComunicacion, registrarEvento, atenderEvento, nuevoCodigoPortal,
 };

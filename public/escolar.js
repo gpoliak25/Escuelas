@@ -234,6 +234,7 @@ async function pageFichaAlumno(id) {
           <dt>Curso</dt><dd><a href="#/cursos/${a.curso_id}">${a.curso}</a> · ${TURNO_LBL[a.turno] || '—'}</dd>
           <dt>Ingreso</dt><dd>${fdate(a.fecha_ingreso)}</dd>
           <dt>Beca</dt><dd>${a.beca_pct ? a.beca_pct + '%' : 'No'}</dd>
+          <dt>Cuota mensual</dt><dd>${d.cuota ? h`<b class="num">${money(d.cuota.monto)}</b> <span class="small muted">arancel ${money(d.cuota.arancel)}${d.cuota.beca_pct ? ` · beca ${d.cuota.beca_pct}%` : ''}${d.cuota.descuento_hermano_pct ? ` · hermano −${d.cuota.descuento_hermano_pct}%` : ''}</span>` : '—'}</dd>
         </dl>
       </div>
       <div class="card">

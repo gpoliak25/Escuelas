@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS comunicaciones (
   respondido INTEGER NOT NULL DEFAULT 0
 );
 
--- tipo: consulta_saldo | solicitud_plan | cambio_medio
+-- tipo: consulta_saldo | solicitud_plan | cambio_medio | reclamo | pedido_pase
 CREATE TABLE IF NOT EXISTS eventos (
   id         INTEGER PRIMARY KEY,
   familia_id INTEGER NOT NULL REFERENCES familias(id) ON DELETE CASCADE,
@@ -117,7 +117,48 @@ CREATE TABLE IF NOT EXISTS asistencia (
   UNIQUE (alumno_id, fecha)
 );
 
+-- Cobros: cada ingreso de dinero (recibo) o crédito (nota de crédito) de una familia.
+-- Se imputa a cargos mediante filas de "pagos"; lo no imputado queda como saldo a favor.
+-- estado: vigente | anulado | rechazado (débito automático rechazado: sin número de recibo).
+CREATE TABLE IF NOT EXISTS cobros (
+  id         INTEGER PRIMARY KEY,
+  numero     INTEGER,
+  tipo       TEXT NOT NULL DEFAULT 'recibo',
+  familia_id INTEGER NOT NULL REFERENCES familias(id) ON DELETE CASCADE,
+  fecha      TEXT NOT NULL,
+  monto      REAL NOT NULL,
+  medio      TEXT NOT NULL,
+  referencia TEXT DEFAULT '',
+  estado     TEXT NOT NULL DEFAULT 'vigente',
+  motivo     TEXT DEFAULT '',
+  creado     TEXT NOT NULL
+);
+
+-- Promesas de pago acordadas con la familia. Su cumplimiento se calcula con los cobros.
+CREATE TABLE IF NOT EXISTS promesas (
+  id             INTEGER PRIMARY KEY,
+  familia_id     INTEGER NOT NULL REFERENCES familias(id) ON DELETE CASCADE,
+  fecha_registro TEXT NOT NULL,
+  fecha_promesa  TEXT NOT NULL,
+  monto          REAL NOT NULL,
+  nota           TEXT DEFAULT '',
+  anulada        INTEGER NOT NULL DEFAULT 0
+);
+
+-- Lotes de débito automático procesados.
+CREATE TABLE IF NOT EXISTS lotes_debito (
+  id         INTEGER PRIMARY KEY,
+  periodo    TEXT NOT NULL,
+  fecha      TEXT NOT NULL,
+  cantidad   INTEGER NOT NULL,
+  aceptados  INTEGER NOT NULL,
+  rechazados INTEGER NOT NULL,
+  monto      REAL NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS ix_cuotas_familia ON cuotas(familia_id);
+CREATE INDEX IF NOT EXISTS ix_cobros_familia ON cobros(familia_id);
+CREATE INDEX IF NOT EXISTS ix_cobros_fecha ON cobros(fecha);
 CREATE INDEX IF NOT EXISTS ix_asistencia_fecha ON asistencia(fecha);
 CREATE INDEX IF NOT EXISTS ix_pagos_cuota ON pagos(cuota_id);
 CREATE INDEX IF NOT EXISTS ix_com_familia ON comunicaciones(familia_id);
@@ -132,6 +173,10 @@ const DEFAULT_SETTINGS = {
   umbral_medio: '25',
   umbral_alto: '50',
   fecha_simulada: '',
+  recargo_activo: '1',
+  recargo_pct: '3',
+  recargo_dias_gracia: '5',
+  punto_venta: '0001',
 };
 
 function open(dbPath = DB_PATH) {
@@ -166,6 +211,34 @@ function migrate(db) {
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_alumnos_dni ON alumnos(dni) WHERE dni IS NOT NULL AND dni <> ''");
   // Todo alumno debe pertenecer a un curso existente.
   db.exec("INSERT OR IGNORE INTO cursos (grado, seccion) SELECT DISTINCT grado, seccion FROM alumnos");
+
+  // Cobranzas: tipo de cargo (arancel | plan | cargo | recargo), recargo -> cargo de origen, pago -> cobro.
+  const cuotaCols = new Set(db.prepare('PRAGMA table_info(cuotas)').all().map((c) => c.name));
+  if (!cuotaCols.has('tipo')) db.exec("ALTER TABLE cuotas ADD COLUMN tipo TEXT NOT NULL DEFAULT 'arancel'");
+  db.exec("UPDATE cuotas SET tipo = 'plan' WHERE plan_id IS NOT NULL AND tipo <> 'plan'");
+  if (!cuotaCols.has('origen_id')) db.exec('ALTER TABLE cuotas ADD COLUMN origen_id INTEGER REFERENCES cuotas(id)');
+  const pagoCols = new Set(db.prepare('PRAGMA table_info(pagos)').all().map((c) => c.name));
+  if (!pagoCols.has('cobro_id')) db.exec('ALTER TABLE pagos ADD COLUMN cobro_id INTEGER REFERENCES cobros(id)');
+  db.exec('CREATE INDEX IF NOT EXISTS ix_pagos_cobro ON pagos(cobro_id)');
+  vincularPagosSinCobro(db);
+}
+
+/** Los pagos cargados antes de existir los recibos reciben uno cada uno (numerados por fecha). */
+function vincularPagosSinCobro(db) {
+  const sueltos = db.prepare('SELECT * FROM pagos WHERE cobro_id IS NULL ORDER BY fecha, id').all();
+  if (!sueltos.length) return 0;
+  let n = db.prepare("SELECT COALESCE(MAX(numero), 0) AS n FROM cobros WHERE tipo = 'recibo'").get().n;
+  const ins = db.prepare(`INSERT INTO cobros (numero, tipo, familia_id, fecha, monto, medio, estado, motivo, creado)
+    VALUES (?, 'recibo', ?, ?, ?, ?, ?, ?, ?)`);
+  const upd = db.prepare('UPDATE pagos SET cobro_id = ? WHERE id = ?');
+  tx(db, () => {
+    for (const p of sueltos) {
+      const r = ins.run(p.rechazado ? null : ++n, p.familia_id, p.fecha, p.monto, p.medio,
+        p.rechazado ? 'rechazado' : 'vigente', p.rechazado ? 'Débito rechazado' : '', `${p.fecha}T12:00:00`);
+      upd.run(Number(r.lastInsertRowid), p.id);
+    }
+  });
+  return sueltos.length;
 }
 
 function getSettings(db) {
@@ -227,6 +300,6 @@ function addMonths(iso, n) {
 }
 
 module.exports = {
-  open, getSettings, setSettings, tx, DB_PATH, DEFAULT_SETTINGS,
+  open, getSettings, setSettings, tx, DB_PATH, DEFAULT_SETTINGS, vincularPagosSinCobro,
   today, isoToday, diffDays, addDays, addMonths,
 };

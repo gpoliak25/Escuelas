@@ -48,7 +48,9 @@ function round1(n) { return Math.round(n * 10) / 10; }
  */
 function scoreFamily(fam, asOf, proximoVenc, umbrales = { medio: 25, alto: 50 }) {
   const factores = {};
+  // El historial se mide sobre aranceles y cuotas de planes (no sobre recargos ni cargos extra)
   const vencidas = fam.cuotas
+    .filter((c) => !c.tipo || c.tipo === 'arancel' || c.tipo === 'plan')
     .filter((c) => c.vencimiento < asOf)
     .sort((a, b) => b.vencimiento.localeCompare(a.vencimiento));
   const ultimas = vencidas.slice(0, 6).map((c) => ({ c, s: cuotaAt(c, asOf) }));
