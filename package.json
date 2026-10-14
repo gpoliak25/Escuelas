@@ -11,6 +11,7 @@
     "start": "node --no-warnings server.js",
     "seed": "node --no-warnings src/seed.js",
     "build:demo": "node --no-warnings scripts/build-demo.js",
-    "test": "node --no-warnings --test test/*.test.js"
+    "test": "node --no-warnings --test test/*.test.js",
+    "export:dataset": "node --no-warnings scripts/exportar-dataset.js"
   }
 }

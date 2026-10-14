@@ -72,6 +72,8 @@ const GENERO = { F: 'Femenino', M: 'Masculino', X: 'No binario', '': 'Sin inform
 const MEDIO = { debito: 'Débito automático', transferencia: 'Transferencia', efectivo: 'Efectivo', online: 'Pago online', tarjeta: 'Tarjeta' };
 const GRADOS = [1, 2, 3, 4, 5, 6, 7].map((g) => `${g}°`);
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+// Familia morosa: al menos una cuota con atraso mayor a este valor (lo usa también el análisis de morosidad)
+const UMBRAL_MOROSO_DIAS = 5;
 
 function estadisticas(db) {
   const L = loadLedger(db);
@@ -141,6 +143,9 @@ function estadisticas(db) {
   const cobranza = {
     cuotas: cuotas.length,
     atraso: describir(atrasos),
+    umbral_moroso: UMBRAL_MOROSO_DIAS,
+    pct_atraso_mayor_0: atrasos.length ? atrasos.filter((a) => a > 0).length / atrasos.length : null,
+    pct_atraso_mayor_umbral: atrasos.length ? atrasos.filter((a) => a > UMBRAL_MOROSO_DIAS).length / atrasos.length : null,
     atraso_hist: histograma(atrasos, [
       { label: 'En término', desde: 0, hasta: 1 },
       { label: '1 a 5 días', desde: 1, hasta: 6 },
@@ -185,18 +190,19 @@ function estadisticas(db) {
     por_dia: porDia,
   };
 
-  // Tabla resumen de variables numéricas
+  // Tabla resumen de variables numéricas: cada una con su unidad de análisis y su propio n.
+  // Con |asimetría| > 1 la media se deforma por la cola: conviene leer mediana y percentiles.
   const resumenVariables = [
-    { variable: 'Edad de los alumnos', unidad: 'años', ...matricula.edad },
-    { variable: 'Hijos por familia', unidad: 'alumnos', ...familias.hijos },
-    { variable: 'Cuota mensual familiar', unidad: '$', ...familias.cuota },
-    { variable: 'Beca (alumnos becados)', unidad: '%', ...familias.becas.porcentaje },
-    { variable: 'Días de atraso por cuota', unidad: 'días', ...cobranza.atraso },
-    { variable: 'Puntaje de riesgo actual', unidad: 'puntos', ...cobranza.puntaje },
-    { variable: 'Asistencia por alumno (30 días)', unidad: '%', ...asistencia.pct },
-  ];
+    { variable: 'Edad de los alumnos', unidad: 'años', unidad_analisis: 'alumnos', ...matricula.edad },
+    { variable: 'Beca (alumnos becados)', unidad: '%', unidad_analisis: 'alumnos', ...familias.becas.porcentaje },
+    { variable: 'Asistencia por alumno (30 días)', unidad: '%', unidad_analisis: 'alumnos', ...asistencia.pct },
+    { variable: 'Hijos por familia', unidad: 'alumnos', unidad_analisis: 'familias', ...familias.hijos },
+    { variable: 'Cuota mensual familiar', unidad: '$', unidad_analisis: 'familias', ...familias.cuota },
+    { variable: 'Puntaje de riesgo actual', unidad: 'puntos', unidad_analisis: 'familias', ...cobranza.puntaje },
+    { variable: 'Días de atraso por cuota', unidad: 'días', unidad_analisis: 'cuotas', ...cobranza.atraso },
+  ].map((v) => ({ ...v, asimetrica: v.asimetria != null && Math.abs(v.asimetria) > 1 }));
 
   return { hoy, ciclo, resumen: resumenVariables, matricula, familias, cobranza, asistencia };
 }
 
-module.exports = { describir, frecuencias, histograma, pearson, cuantil, estadisticas };
+module.exports = { UMBRAL_MOROSO_DIAS, describir, frecuencias, histograma, pearson, cuantil, estadisticas };

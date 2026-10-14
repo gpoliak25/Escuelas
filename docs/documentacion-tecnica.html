@@ -136,6 +136,7 @@
     <li><a href="#reglas">Motor por reglas</a></li>
     <li><a href="#ml">Inteligencia (ML)</a></li>
     <li><a href="#escolar">Gestión escolar</a></li>
+    <li><a href="#estadistica">Estadística</a></li>
     <li><a href="#api">Referencia de la API</a></li>
     <li><a href="#portal">Portal y comprobantes</a></li>
     <li><a href="#config">Configuración</a></li>
@@ -156,9 +157,9 @@
   </div>
   <div class="facts">
     <div class="fact"><div class="k">Dependencias externas</div><div class="v">0</div><div class="d">Node.js y SQLite integrado</div></div>
-    <div class="fact"><div class="k">Rutas de la API</div><div class="v">55</div><div class="d">JSON sobre HTTP</div></div>
+    <div class="fact"><div class="k">Rutas de la API</div><div class="v">57</div><div class="d">JSON sobre HTTP</div></div>
     <div class="fact"><div class="k">Tablas</div><div class="v">13</div><div class="d">SQLite, migración automática</div></div>
-    <div class="fact"><div class="k">Tests</div><div class="v">22</div><div class="d"><code>node:test</code></div></div>
+    <div class="fact"><div class="k">Tests</div><div class="v">24</div><div class="d"><code>node:test</code></div></div>
   </div>
 
   <!-- 1 -->
@@ -167,9 +168,10 @@
 <pre><code>git clone https://github.com/gpoliak25/Escuelas
 cd Escuelas
 npm start            # http://localhost:3000 (administración) y /portal (familias)
-npm test             # 22 tests
+npm test             # 24 tests
 npm run seed         # recarga los datos de demostración
-npm run build:demo   # genera la demo de un solo archivo en dist/</code></pre>
+npm run build:demo   # genera la demo de un solo archivo en dist/
+npm run export:dataset  # dataset para el análisis en Python (analisis/datos/)</code></pre>
   <p>La primera vez que arranca con la base vacía, el servidor crea <code>data/escuela.db</code> y carga los datos de demostración. Variables opcionales: <code>PORT</code> (puerto, 3000 por defecto) y <code>DB_PATH</code> (ruta de la base; <code>:memory:</code> en los tests).</p>
 
   <!-- 2 -->
@@ -178,15 +180,15 @@ npm run build:demo   # genera la demo de un solo archivo en dist/</code></pre>
   <figure class="dia">
     <svg viewBox="0 0 920 420" role="img" aria-label="Diagrama de capas: navegador, servidor, rutas, servicios y lectura, base SQLite">
       <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
-      <rect x="20" y="16" width="430" height="64" rx="10"/><text x="40" y="44" font-size="16" font-weight="600">Administración (SPA)</text><text class="sub" x="40" y="64">index.html · app.js · escolar.js · cobranzas.js · ml.js</text>
+      <rect x="20" y="16" width="430" height="64" rx="10"/><text x="40" y="44" font-size="16" font-weight="600">Administración (SPA)</text><text class="sub" x="40" y="64">index.html · app.js · escolar.js · cobranzas.js · ml.js · estadistica.js</text>
       <rect x="470" y="16" width="430" height="64" rx="10"/><text x="490" y="44" font-size="16" font-weight="600">Portal de familias</text><text class="sub" x="490" y="64">portal.html · portal.js · acceso con código</text>
       <line x1="235" y1="80" x2="235" y2="112" marker-end="url(#ar)"/><line x1="685" y1="80" x2="685" y2="112" marker-end="url(#ar)"/>
       <rect class="hl" x="20" y="114" width="880" height="56" rx="10"/><text x="40" y="140" font-size="16" font-weight="600">server.js</text><text class="sub" x="40" y="158">HTTP · archivos estáticos · /recibos, /estado-cuenta, /libre-deuda (documentos.js) · /api/* → api.js</text>
       <line x1="460" y1="170" x2="460" y2="200" marker-end="url(#ar)"/>
-      <rect x="20" y="202" width="880" height="48" rx="10"/><text x="40" y="231" font-size="16" font-weight="600">api.js</text><text class="sub" x="120" y="231">55 rutas · validación de entrada (validate.js) · errores HttpError → JSON</text>
+      <rect x="20" y="202" width="880" height="48" rx="10"/><text x="40" y="231" font-size="16" font-weight="600">api.js</text><text class="sub" x="120" y="231">57 rutas · validación de entrada (validate.js) · errores HttpError → JSON</text>
       <line x1="235" y1="250" x2="235" y2="280" marker-end="url(#ar)"/><line x1="685" y1="250" x2="685" y2="280" marker-end="url(#ar)"/>
       <rect x="20" y="282" width="430" height="64" rx="10"/><text x="40" y="308" font-size="16" font-weight="600">Escritura</text><text class="sub" x="40" y="328">services.js · cobranzas.js · escolar.js</text>
-      <rect x="470" y="282" width="430" height="64" rx="10"/><text x="490" y="308" font-size="16" font-weight="600">Lectura y cálculo</text><text class="sub" x="490" y="328">domain.js (loadLedger) · risk.js · ml.js · stats.js</text>
+      <rect x="470" y="282" width="430" height="64" rx="10"/><text x="490" y="308" font-size="16" font-weight="600">Lectura y cálculo</text><text class="sub" x="490" y="328">domain.js (loadLedger) · risk.js · ml.js · stats.js · morosidad.js</text>
       <line x1="235" y1="346" x2="235" y2="372" marker-end="url(#ar)"/><line x1="685" y1="346" x2="685" y2="372" marker-end="url(#ar)"/>
       <rect class="hl" x="20" y="374" width="880" height="40" rx="10"/><text x="40" y="399" font-size="16" font-weight="600">db.js · SQLite</text><text class="sub" x="160" y="399">esquema, migraciones, configuración, fechas · data/escuela.db</text>
     </svg>
@@ -215,10 +217,13 @@ npm run build:demo   # genera la demo de un solo archivo en dist/</code></pre>
       <tr><td class="nw"><code>src/ml.js</code></td><td>Regresión logística, backtest, modelo de recupero, segmentación, priorización, proyección de caja, anomalías, riesgo de baja y datos del simulador.</td></tr>
       <tr><td class="nw"><code>src/escolar.js</code></td><td>Alumnos (alta, edición, baja, reincorporación), cursos y asistencia.</td></tr>
       <tr><td class="nw"><code>src/stats.js</code></td><td>Estadística descriptiva (medidas, frecuencias, histogramas, Pearson).</td></tr>
+      <tr><td class="nw"><code>src/inferencia.js</code></td><td>Distribuciones y tests sin dependencias: chi cuadrado (con Yates en 2×2), Fisher exacto, Monte Carlo, V de Cramér, Spearman, Mann-Whitney, Kruskal-Wallis, Holm, AUC y bootstrap. Validado contra scipy.</td></tr>
+      <tr><td class="nw"><code>src/morosidad.js</code></td><td>Análisis de morosidad a nivel familia: dataset en tres tablas, validación, cruces inferenciales, ROC, Pareto y conclusiones en Markdown.</td></tr>
       <tr><td class="nw"><code>src/documentos.js</code></td><td>Recibo / nota de crédito, estado de cuenta y certificado de libre deuda.</td></tr>
       <tr><td class="nw"><code>src/seed.js</code></td><td>Datos de demostración deterministas y casos de ejemplo.</td></tr>
-      <tr><td class="nw"><code>public/</code></td><td>Interfaz: <code>app.js</code> (núcleo, tablero, bandeja, familias, cuotas, planes, configuración), <code>escolar.js</code>, <code>cobranzas.js</code>, <code>ml.js</code>, <code>styles.css</code> y el portal.</td></tr>
-      <tr><td class="nw"><code>scripts/build-demo.js</code></td><td>Genera <code>dist/gestion-escolar-demo.html</code> (ver sección 14).</td></tr>
+      <tr><td class="nw"><code>public/</code></td><td>Interfaz: <code>app.js</code> (núcleo, tablero, bandeja, familias, cuotas, planes, configuración), <code>escolar.js</code>, <code>cobranzas.js</code>, <code>ml.js</code>, <code>estadistica.js</code> (sección Estadística), <code>styles.css</code> y el portal.</td></tr>
+      <tr><td class="nw"><code>analisis/</code></td><td>Script de Python (<code>analisis_morosidad.py</code>) con el mismo análisis; lee el dataset de <code>npm run export:dataset</code>.</td></tr>
+      <tr><td class="nw"><code>scripts/build-demo.js</code></td><td>Genera <code>dist/gestion-escolar-demo.html</code> (ver sección 15).</td></tr>
       <tr><td class="nw"><code>docs/</code></td><td>Esta documentación y la del puntaje de riesgo (<code>motor-predictivo.html</code>).</td></tr>
     </tbody>
   </table></div>
@@ -241,7 +246,7 @@ npm run build:demo   # genera la demo de un solo archivo en dist/</code></pre>
       <tr><td class="nw"><code>comunicaciones</code></td><td>Contactos de la escalera de cobranza.</td><td><code>etapa</code>, <code>canal</code>, <code>estado</code> (enviada, omitida), <code>abierto</code>, <code>respondido</code></td></tr>
       <tr><td class="nw"><code>eventos</code></td><td>Señales de la familia.</td><td><code>tipo</code>: consulta_saldo, solicitud_plan, cambio_medio, reclamo, pedido_pase · <code>atendido</code></td></tr>
       <tr><td class="nw"><code>lotes_debito</code></td><td>Historial de lotes de débito procesados.</td><td><code>periodo</code>, aceptados, rechazados, monto</td></tr>
-      <tr><td class="nw"><code>settings</code></td><td>Configuración clave-valor.</td><td>ver sección 13</td></tr>
+      <tr><td class="nw"><code>settings</code></td><td>Configuración clave-valor.</td><td>ver sección 14</td></tr>
     </tbody>
   </table></div>
   <div class="note"><b>Cobro y pago no son lo mismo.</b> Un <i>cobro</i> es el dinero o crédito que ingresa (genera recibo). Un <i>pago</i> es cuánto de ese cobro se aplicó a cada cuota. Lo cobrado y no imputado es el <b>saldo a favor</b>: <code>cobro.monto − Σ pagos del cobro</code>. Al anular un cobro se borran sus pagos y la deuda vuelve a quedar pendiente. Los pagos anteriores a la existencia de recibos se vinculan solos a uno (<code>vincularPagosSinCobro</code>).</div>
@@ -347,7 +352,7 @@ si dias &gt; gracia:
     <div class="box"><h3>Anomalías</h3><ul><li>Pagó en término sus últimas 6 cuotas y la última se atrasó más de 3 días.</li><li>La probabilidad subió 30 puntos o más en 3 meses y supera 45%.</li><li>Arancel reciente distinto del esperado según alumnos, becas y descuentos.</li><li>Dos recibos iguales (misma familia, día, importe y medio).</li></ul></div>
     <div class="box"><h3>Riesgo de baja</h3><p>Suma: cuotas vencidas (1: 10, 2: 20, 3 o más: 35), asistencia de 30 días (&lt;85%: 20, &lt;90%: 10), reclamos de 90 días (15 c/u, tope 30), pedido de pase en 120 días (30), hermano dado de baja en el año (10), promesa incumplida (5). Alto desde 50, medio desde 25. Uso exclusivo de dirección; no entra en el puntaje de cobranza.</p></div>
   </div>
-  <div class="box"><h3>Simulador de escenarios</h3><p>Se calcula en el navegador con datos por segmento (<code>simulacion.segmentos</code>). Por cada 10% de aumento suma <i>s</i> puntos de impago al segmento (supuestos editables; con aumento en dos tramos el efecto se multiplica por 0,6). El plan temprano reduce el impago de "dificultad transitoria" en un porcentaje; el descuento por pago anticipado lo toma una fracción de puntuales y tardíos, que pasan a pagar en término, a cambio del costo del descuento. Horizonte: 10 cuotas.</p></div>
+  <div class="box"><h3>Simulador de escenarios</h3><p>Se calcula en el navegador con datos por segmento (<code>simulacion.segmentos</code>). Por cada 10% de aumento suma <i>s</i> puntos de impago al segmento (supuestos editables). En dos tramos, la facturación lleva la mitad del aumento de marzo a julio y el total de agosto a diciembre, y el impago adicional se multiplica por 0,6. Las familias de cada segmento son las de hoy (el simulador no las cambia de segmento); la tabla muestra además las <b>familias con impago</b> esperadas, familias × % de impago, hoy y en el escenario. El plan temprano reduce el impago de "dificultad transitoria" en un porcentaje; el descuento por pago anticipado lo toma una fracción de puntuales y tardíos, que pasan a pagar en término, a cambio del costo del descuento. Horizonte: 10 cuotas.</p></div>
   <div class="note"><b>Calibración pendiente.</b> Los resultados actuales salen de datos ficticios. Con datos reales el sistema reentrena solo, pero los supuestos del simulador y los umbrales deben revisarse con la dirección.</div>
 
   <!-- 10 -->
@@ -356,10 +361,193 @@ si dias &gt; gracia:
     <div class="box"><h3>Alumnos</h3><ul><li>DNI de 7 u 8 dígitos, único.</li><li>Edad entre 4 y 16 años; fecha de ingreso no futura.</li><li>Alta, cambio de curso y reincorporación verifican el cupo.</li><li>Baja con fecha y motivo; "Egreso" deja el estado <code>egresado</code>.</li><li>El alta puede crear la familia en el mismo paso.</li></ul></div>
     <div class="box"><h3>Cursos y asistencia</h3><ul><li>El cupo no puede quedar por debajo de los inscriptos.</li><li>La asistencia no admite fechas futuras ni fines de semana, y sólo alumnos activos del curso.</li><li>Se guarda con <i>upsert</i>: corregir un día no duplica.</li><li>"Justificada" sólo aplica a ausentes.</li></ul></div>
   </div>
-  <p>Las estadísticas (<code>stats.js</code>) calculan media, mediana, moda, desvío muestral, coeficiente de variación, cuartiles por interpolación lineal y asimetría de Fisher; además tablas de frecuencia, histogramas y la correlación de Pearson entre el puntaje calculado antes del vencimiento y el atraso real.</p>
-
   <!-- 11 -->
-  <h2 id="api"><span class="n">11</span>Referencia de la API</h2>
+  <h2 id="estadistica"><span class="n">11</span>Estadística</h2>
+  <p>Sección propia del menú, entre <b>Cobranzas</b> e <b>Inteligencia</b>, con dos pantallas: <b>Descriptiva</b> (<code>#/estadisticas</code>) y <b>Análisis de morosidad</b> (<code>#/morosidad</code>). La interfaz está en <code>public/estadistica.js</code>. Los cálculos están en tres archivos: <code>src/stats.js</code> (descriptiva), <code>src/inferencia.js</code> (distribuciones y tests, sin dependencias) y <code>src/morosidad.js</code> (dataset, validación, cruces, ROC, Pareto y conclusiones). Los dos endpoints son <code>GET /api/estadisticas</code> y <code>GET /api/estadisticas/morosidad</code>. Todo se recalcula en cada pedido con los datos a la fecha de referencia (real o simulada).</p>
+  <div class="grid2">
+    <div class="box"><h3>Descriptiva</h3><ul>
+      <li>Tabla resumen de las variables numéricas, cada una con su unidad de análisis y su propio n.</li>
+      <li>Marca de asimetría y recomendación de mediana y percentiles.</li>
+      <li>Matrícula, familias, cobranza y asistencia: frecuencias, histogramas, medidas por grupo y correlación de Pearson.</li>
+      <li>Todas las tablas se descargan en CSV (separador <code>;</code>, para Excel en español).</li>
+    </ul></div>
+    <div class="box"><h3>Análisis de morosidad</h3><ul>
+      <li>Validación de los datos, que informa los problemas sin frenar el análisis.</li>
+      <li>9 cruces contra la morosidad a nivel familia, con ajuste de Holm.</li>
+      <li>Curva ROC del puntaje de riesgo, con intervalo de confianza por bootstrap.</li>
+      <li>Tres análisis de Pareto con la lista priorizada de familias.</li>
+      <li>Conclusiones automáticas en Markdown y exportación del dataset para Python.</li>
+    </ul></div>
+  </div>
+
+  <h3>11.1 Unidades de análisis y ventanas de tiempo</h3>
+  <p>Cada variable se mide sobre una unidad distinta, y por eso cada fila de la tabla resumen tiene su propio n. Mezclar unidades es el error más común: por ejemplo, promediar el atraso por cuota sobrerrepresenta a las familias con más hijos o con más cargos.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unidad</th><th>Qué es una fila</th><th>Qué entra</th><th class="r">n en la demo</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><b>Alumno</b></td><td>Un alumno de la tabla <code>alumnos</code>.</td><td>Alumnos con <code>estado = activo</code> de familias activas.</td><td class="r">≈ 94–99</td></tr>
+      <tr><td class="nw"><b>Familia</b></td><td>Un registro de <code>familias</code>; agrupa a los hermanos y concentra la deuda.</td><td>Familias con <code>activa = 1</code>. Para los tests, sólo las que tienen al menos una cuota en la ventana y puntaje calculado.</td><td class="r">64</td></tr>
+      <tr><td class="nw"><b>Cuota</b></td><td>Un cargo de la tabla <code>cuotas</code>: arancel, cargo adicional o recargo.</td><td>Vencimiento en los <b>últimos 365 días</b> y anterior a hoy, <b>sin cuotas de planes de pago</b> (<code>plan_id</code> vacío), para no contar dos veces la deuda refinanciada.</td><td class="r">≈ 677–679</td></tr>
+    </tbody>
+  </table></div>
+  <p>Las otras ventanas son la asistencia (registros de los <b>últimos 30 días</b>: fecha &gt; hoy − 30 y ≤ hoy) y la correlación de Pearson de la descriptiva (cuotas que vencieron entre hace 186 y hace 11 días, para que su resultado ya se conozca).</p>
+
+  <h3>11.2 Diccionario de variables</h3>
+  <p>Son las variables de la tabla resumen y del dataset que se exporta para Python. La columna <i>Campo</i> es el nombre lógico en el CSV exportado y en el <code>CONFIG</code> del script.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Variable · campo</th><th>Unidad</th><th>Fuente y cálculo</th><th>Cómo leerla</th></tr></thead>
+    <tbody>
+      <tr><td><b>Edad</b><br><code>edad</code></td><td class="nw">alumno · años</td><td>Años cumplidos a la fecha de referencia, calculados con <code>alumnos.fecha_nacimiento</code> (se resta un año si todavía no cumplió en el año en curso). Sin fecha de nacimiento queda vacía y no cuenta en el n.</td><td>Variable de control de matrícula; en primaria va aproximadamente de 5 a 13 años y suele ser simétrica. La edad por grado detecta sobreedad.</td></tr>
+      <tr><td><b>Beca</b><br><code>beca_pct</code></td><td class="nw">alumno · %</td><td><code>alumnos.beca_pct</code>, de 0 a 100. Vacío o 0 significa sin beca. En la tabla resumen se describe <b>sólo entre los becados</b> (beca &gt; 0); si no, la mediana sería 0 y no diría nada.</td><td>El n de esta fila es la cantidad de becados, en general muy chica: las medidas son orientativas.</td></tr>
+      <tr><td><b>Asistencia últimos 30 días</b><br><code>asistencia_30d_pct</code></td><td class="nw">alumno · %</td><td>(días registrados − ausencias) ÷ días registrados × 100, con los registros de <code>asistencia</code> de la ventana. Las <b>llegadas tarde cuentan como presente</b>; las faltas <b>justificadas cuentan como ausencia</b>. Sin registros en la ventana queda vacía.</td><td>Muy concentrada cerca de 100 y con cola hacia abajo (asimetría negativa): conviene leer la mediana y el P25. Por debajo del 90% se considera ausentismo crónico.</td></tr>
+      <tr><td><b>Hijos por familia</b><br><code>hijos_por_familia</code></td><td class="nw">familia · alumnos</td><td>Cantidad de alumnos <b>activos</b> de la familia. En la descriptiva se excluyen las familias sin alumnos activos.</td><td>Discreta (1, 2, 3, 4…); la moda suele ser 1. Para los tests se agrupa en 1, 2 y "3 o más".</td></tr>
+      <tr><td><b>Cuota mensual familiar</b><br><code>cuota_mensual_familiar</code></td><td class="nw">familia · $</td><td><code>montoFamilia</code>: suma, por cada alumno activo, de arancel × (1 − beca) × (1 − descuento por hermano). El descuento se aplica desde el segundo hijo, ordenando por grado. El arancel y el descuento salen de Configuración (en la demo, $185.000 y 10%). En la descriptiva se excluyen las cuotas de $0.</td><td>Crece en escalones según la cantidad de hijos; la asimetría positiva viene de las familias numerosas.</td></tr>
+      <tr><td><b>Puntaje de riesgo actual</b><br><code>puntaje_riesgo_actual</code></td><td class="nw">familia · puntos</td><td><code>scoreFamily</code> a la fecha de referencia: suma de 7 señales (historial hasta 40 puntos, deuda vencida 25, medio de pago 20, momento del pago 10, vínculo 10, portal 10 y estacionalidad 5), con tope de 100. El semáforo marca nivel medio desde 25 y alto desde 50 (configurable). Ver la sección 8 y el documento del motor predictivo.</td><td>La mayoría de las familias está cerca de 0, con una cola alta. <b>Ojo:</b> incluye la deuda y el historial, que también definen la morosidad (ver 11.5).</td></tr>
+      <tr><td><b>Días de atraso por cuota</b><br><code>dias_atraso</code></td><td class="nw">cuota · días</td><td><code>cuotaAt</code>: días entre el vencimiento y la fecha en que los pagos válidos (no rechazados) completan el monto. Si la cuota sigue impaga, <b>se cuenta hasta hoy</b>, así que el atraso de las impagas sigue creciendo. Si se refinanció en un plan, se cierra en la fecha del plan. Nunca es negativo: un pago anticipado vale 0.</td><td>Muchos ceros y una cola larga (asimetría muy alta): la media engaña. Se informan además el % de cuotas con atraso &gt; 0 y con atraso &gt; 5 días.</td></tr>
+      <tr><td><b>Monto adeudado por cuota</b><br><code>monto_adeudado</code></td><td class="nw">cuota · $</td><td>Saldo impago de la cuota si está <b>vencida</b>; 0 si está pagada o refinanciada. La deuda que pasó a un plan de pagos no se cuenta acá. Es opcional en el script de Python: si falta la columna, se omite el Pareto de deuda.</td><td>Casi todo ceros: la deuda se concentra en pocas cuotas y pocas familias.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.3 Variables derivadas a nivel familia</h3>
+  <p><code>tablaFamilias</code> une las tres tablas por <code>id_familia</code> y arma la tabla de los tests y del Pareto (una fila por familia).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Variable</th><th>Definición</th><th>Se usa en</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><b>Morosa</b> (sí/no)</td><td>Al menos una cuota de la ventana con <b>más de 5 días</b> de atraso (<code>UMBRAL_MOROSO_DIAS</code>). Es la variable resultado de todos los tests.</td><td>Cruces categóricos, ROC</td></tr>
+      <tr><td class="nw"><b>Atraso máximo</b></td><td>El mayor <code>dias_atraso</code> entre las cuotas de la familia: resume "qué tan grave fue el peor episodio".</td><td>Spearman, Mann-Whitney, Kruskal-Wallis</td></tr>
+      <tr><td class="nw"><b>Atraso acumulado</b></td><td>Suma de los <code>dias_atraso</code> de todas sus cuotas: combina frecuencia y duración de los atrasos.</td><td>Pareto 1 y 3</td></tr>
+      <tr><td class="nw"><b>Deuda vencida</b></td><td>Suma de <code>monto_adeudado</code> de sus cuotas.</td><td>Pareto 2</td></tr>
+      <tr><td class="nw"><b>Beca</b> (con/sin)</td><td>"Con beca" si al menos un hijo tiene beca &gt; 0.</td><td>Fisher/chi², Mann-Whitney</td></tr>
+      <tr><td class="nw"><b>Asistencia promedio</b></td><td>Promedio simple de la asistencia de 30 días de los hijos que tienen registros.</td><td>Spearman</td></tr>
+      <tr><td class="nw"><b>Asistencia categorizada</b></td><td>"Menos de 90%", "90 a 95%" y "95% o más" (<code>CORTES_ASISTENCIA</code>). Las familias sin registros quedan fuera de ese cruce.</td><td>Chi² / Monte Carlo</td></tr>
+      <tr><td class="nw"><b>Riesgo categorizado</b></td><td>Con los percentiles reales del puntaje: <b>bajo</b> hasta el P25, <b>medio</b> hasta el P75 y <b>alto</b> por encima. Si P25 = P75, sólo bajo y alto. No es el semáforo del sistema (25/50), sino cortes según la distribución observada.</td><td>Chi², Kruskal-Wallis, lista del Pareto</td></tr>
+      <tr><td class="nw"><b>Grupo de hijos</b></td><td>1, 2 y "3 o más". Si "3 o más" queda con menos de 3 familias, se une al grupo anterior ("2 o más") para que el test tenga sentido.</td><td>Kruskal-Wallis o Mann-Whitney</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.4 Medidas de la tabla resumen</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Medida</th><th>Cálculo</th><th>Para qué sirve</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><b>n</b></td><td>Valores numéricos válidos de la variable en su unidad (se descartan los vacíos).</td><td>Indica con cuántos casos se calculó cada fila.</td></tr>
+      <tr><td class="nw"><b>Media</b></td><td>Σx ÷ n.</td><td>Promedio; sensible a los valores extremos.</td></tr>
+      <tr><td class="nw"><b>Mediana</b></td><td>Percentil 50 con interpolación lineal.</td><td>El valor del medio; robusta a las colas.</td></tr>
+      <tr><td class="nw"><b>Moda</b></td><td>Valor más frecuente; si hay empate, el menor. Se informa sólo si aparece más de una vez.</td><td>Útil en variables discretas (hijos, edad).</td></tr>
+      <tr><td class="nw"><b>Desvío</b></td><td>Desvío estándar muestral: √(Σ(x − media)² ÷ (n − 1)).</td><td>Dispersión, en la unidad de la variable.</td></tr>
+      <tr><td class="nw"><b>CV</b></td><td>Desvío ÷ |media|, en %.</td><td>Compara la dispersión entre variables con distintas unidades; más de 100% indica mucha heterogeneidad.</td></tr>
+      <tr><td class="nw"><b>Mín., P25, P75, máx.</b></td><td>Extremos y cuartiles. El percentil q se ubica en la posición (n − 1)·q de los datos ordenados, interpolando entre vecinos (igual que el método por defecto de numpy y pandas).</td><td>P25–P75 contiene a la mitad central de los casos.</td></tr>
+      <tr><td class="nw"><b>Asimetría</b></td><td>Coeficiente de Fisher ajustado: n ÷ ((n − 1)(n − 2)) · Σ((x − media) ÷ desvío)³. Equivale a <code>scipy.stats.skew(bias=False)</code>.</td><td>Positiva: cola de valores altos (atrasos largos). Negativa: cola de valores bajos (asistencia). Con <b>|asimetría| &gt; 1</b> la variable se marca como asimétrica y se recomienda informar mediana y P25–P75 en lugar de la media.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Otras tablas de la descriptiva: frecuencias absolutas, relativas y acumuladas; histogramas con tramos fijos (atraso: en término, 1–5, 6–10, 11–30, 31–60 y más de 60 días; puntaje: deciles; asistencia: menos de 75%, 75–85, 85–90, 90–95 y 95–100%); medidas por grupo (edad por grado, atraso según medio de pago, asistencia por grado); inasistencia por día de la semana; y la <b>correlación de Pearson</b> entre el puntaje calculado 10 días antes de cada vencimiento y el atraso real de esa cuota. A diferencia del puntaje actual, este no tiene circularidad, porque usa sólo datos anteriores al vencimiento.</p>
+
+  <h3>11.5 Los 9 cruces contra la morosidad</h3>
+  <p>Todos se hacen a nivel familia, porque las cuotas de una misma familia no son independientes: tratar cada cuota como un caso inflaría el n y daría p-valores falsamente chicos.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Cruce</th><th>Pregunta</th><th>Test</th><th>Efecto</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><b>Riesgo categorizado × morosa</b> ●</td><td>¿Las familias de riesgo alto son morosas con más frecuencia?</td><td>Chi² / Monte Carlo</td><td>V de Cramér</td></tr>
+      <tr><td>2</td><td><b>Beca × morosa</b></td><td>¿Las familias con beca son morosas en distinta proporción?</td><td>Chi² (Yates) / Fisher</td><td>V de Cramér</td></tr>
+      <tr><td>3</td><td><b>Asistencia categorizada × morosa</b></td><td>¿La asistencia de los hijos se asocia con la morosidad?</td><td>Chi² / Monte Carlo</td><td>V de Cramér</td></tr>
+      <tr><td>4</td><td><b>Puntaje vs. atraso máximo</b> ●</td><td>¿A mayor puntaje, mayor atraso?</td><td>Spearman</td><td>rho</td></tr>
+      <tr><td>5</td><td><b>Asistencia promedio vs. atraso máximo</b></td><td>¿A menor asistencia, mayor atraso?</td><td>Spearman</td><td>rho</td></tr>
+      <tr><td>6</td><td><b>Cuota mensual vs. atraso máximo</b></td><td>¿Las cuotas más altas se pagan con más atraso?</td><td>Spearman</td><td>rho</td></tr>
+      <tr><td>7</td><td><b>Atraso máximo según beca</b></td><td>¿Difiere el atraso entre familias con y sin beca?</td><td>Mann-Whitney</td><td>r rank-biserial</td></tr>
+      <tr><td>8</td><td><b>Atraso máximo según cantidad de hijos</b></td><td>¿Difiere el atraso según el tamaño de la familia?</td><td>Kruskal-Wallis</td><td>ε²</td></tr>
+      <tr><td>9</td><td><b>Atraso máximo según nivel de riesgo</b> ●</td><td>¿Difiere el atraso entre los niveles bajo, medio y alto?</td><td>Kruskal-Wallis</td><td>ε²</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b>● Valida el propio puntaje.</b> El puntaje actual suma puntos por historial de atraso y deuda vencida, que son justamente lo que define a una familia como morosa. Por eso los cruces 1, 4 y 9 (y la ROC) salen casi siempre significativos y con efectos grandes: confirman que el puntaje resume bien el pasado, no que lo anticipe. La validación predictiva es el backtest de las secciones 8 y 9, que usa el puntaje calculado antes de cada vencimiento. En la pantalla y en las conclusiones estos cruces se marcan "valida el propio puntaje" y se separan de las señales nuevas.</div>
+
+  <h3>11.6 Cómo se elige cada test y cómo se lee el efecto</h3>
+  <ul>
+    <li><b>Categórica × categórica.</b> Se arma la tabla de contingencia, sin filas ni columnas vacías, y se calculan las frecuencias esperadas (total de fila × total de columna ÷ n). Si <b>todas son ≥ 5</b>: chi cuadrado de independencia, con corrección de Yates en tablas 2×2 (como scipy). Si alguna es <b>menor a 5</b>: <b>Fisher exacto</b> bilateral en 2×2 (suma de las tablas con probabilidad ≤ a la observada, con los márgenes fijos), o <b>chi cuadrado por Monte Carlo</b> en tablas mayores: se permutan las etiquetas de morosidad 10.000 veces, manteniendo los totales, y p = (1 + tablas con χ² ≥ al observado) ÷ (B + 1), como <code>chisq.test(simulate.p.value = TRUE)</code> de R. El efecto es la <b>V de Cramér</b> = √(χ² ÷ (n · (mín(filas, columnas) − 1))), sobre el χ² sin corrección.</li>
+    <li><b>Numérica × numérica.</b> <b>Spearman</b>: la correlación de Pearson sobre los rangos (los empates reciben el rango promedio). Es robusta a la asimetría y a los valores extremos, que acá abundan. El p-valor usa t = rho·√((n − 2) ÷ (1 − rho²)) con n − 2 grados de libertad, igual que scipy. Requiere al menos 4 pares y que ninguna variable sea constante.</li>
+    <li><b>Numérica por grupos.</b> Con 2 grupos, <b>Mann-Whitney</b> bilateral con aproximación normal, corrección por empates y corrección de continuidad. No se usa el test exacto porque hay muchos empates en 0. El efecto es la <b>correlación rank-biserial</b> r = 2·U₁ ÷ (n₁·n₂) − 1: positiva si el primer grupo ("con beca") tiene atrasos mayores. Con 3 o más grupos, <b>Kruskal-Wallis</b> con corrección por empates y efecto <b>ε² = H ÷ (n − 1)</b>. Cada grupo necesita al menos 2 familias.</li>
+    <li><b>Medianas por grupo y tablas de contingencia</b> se muestran debajo de la tabla de resultados, para ver hacia dónde va la diferencia y no sólo si existe.</li>
+  </ul>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Medida de efecto</th><th class="r">Chico</th><th class="r">Mediano</th><th class="r">Grande</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td>V de Cramér (tabla 2×k)</td><td class="r">0,10</td><td class="r">0,30</td><td class="r">0,50</td><td>De 0 a 1; no tiene signo.</td></tr>
+      <tr><td>rho de Spearman</td><td class="r">0,10</td><td class="r">0,30</td><td class="r">0,50</td><td>De −1 a 1; el signo indica la dirección.</td></tr>
+      <tr><td>r rank-biserial</td><td class="r">0,10</td><td class="r">0,30</td><td class="r">0,50</td><td>De −1 a 1; ±1 si los grupos no se solapan.</td></tr>
+      <tr><td>ε² (Kruskal-Wallis)</td><td class="r">0,01</td><td class="r">0,08</td><td class="r">0,26</td><td>Proporción de la variabilidad de los rangos explicada por el grupo.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Comparaciones múltiples (Holm).</b> Con 9 tests al 5%, la probabilidad de al menos un falso positivo ronda el 37%. Holm ordena los p-valores de menor a mayor, multiplica el k-ésimo por (m − k + 1), asegura que la secuencia no baje y corta en 1. Un cruce es <b>significativo</b> si su <b>p ajustado &lt; α = 0,05</b>. Se muestran los dos p-valores, el crudo y el ajustado. Los tests que no se pudieron correr (datos insuficientes) quedan fuera del ajuste y se informan con su motivo.</p>
+  <p><b>Asociación no implica causalidad.</b> Los cruces son bivariados, no controlan otras variables y se hacen sobre unas 60 familias: son exploratorios. Un resultado "no significativo" con pocos casos (por ejemplo, 5 familias becadas) significa "no hay evidencia suficiente", no "no hay efecto".</p>
+
+  <h3>11.7 Validación del puntaje: curva ROC y AUC</h3>
+  <ul>
+    <li><b>Curva ROC.</b> Para cada valor del puntaje usado como corte ("alerta si puntaje ≥ c"), se calcula la sensibilidad (morosas detectadas ÷ morosas) y 1 − especificidad (no morosas alertadas ÷ no morosas). En la pantalla, al pasar el mouse por cada punto se ven la sensibilidad y la especificidad de ese corte, lo que sirve para elegir umbrales.</li>
+    <li><b>AUC.</b> Probabilidad de que una familia morosa elegida al azar tenga más puntaje que una no morosa (los empates valen ½). Se calcula con el estadístico de Mann-Whitney. 0,5 es azar; 0,7 aceptable; 0,8 bueno; 0,9 excelente.</li>
+    <li><b>Intervalo de confianza del 95%.</b> Bootstrap de percentiles: 1.000 remuestreos con reposición de las familias, con semilla fija. Se descartan las réplicas sin morosas o sin no morosas.</li>
+    <li>Por lo explicado en 11.5, este AUC es <b>optimista</b>.</li>
+  </ul>
+
+  <h3>11.8 Análisis de Pareto</h3>
+  <p>Mide cuán concentrado está el problema. Las familias se ordenan de mayor a menor (desempate por id) y se acumula su participación en el total. El gráfico usa <b>un solo eje en %</b>: cada barra es la participación de una familia y la línea es el acumulado, con referencia horizontal en el 80% y vertical en la familia que lo alcanza.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Análisis</th><th>Orden</th><th>Valor acumulado</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td><b>1 · Atraso</b></td><td>Atraso acumulado</td><td>Días de atraso acumulados</td><td>"n familias (X% del total) explican el Y% del atraso"</td></tr>
+      <tr><td><b>2 · Deuda</b></td><td>Deuda vencida</td><td>Monto adeudado</td><td>Ídem, sobre la deuda. Se omite si no hay columna de monto.</td></tr>
+      <tr><td><b>3 · Puntaje</b></td><td>Puntaje de riesgo</td><td>Días de atraso acumulados</td><td>Qué % del atraso y cuántas familias morosas concentra el <b>20%</b> de familias con mayor puntaje (<code>TOP_PUNTAJE</code>). Mide si el puntaje sirve para focalizar.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>n de referencia:</b> la menor cantidad de familias cuyo acumulado llega al 80% (<code>PARETO_REFERENCIA</code>). También se informa cuántas familias tienen valor cero. Cada análisis exporta la <b>lista priorizada</b>: puesto, id (y apellido en la pantalla), valor, % acumulado, puntaje, nivel P25/P75 y semáforo actual.</p>
+
+  <h3>11.9 Validación de los datos</h3>
+  <p><code>validar()</code> corre 18 chequeos y <b>no aborta</b>: los informa en la pantalla, en las conclusiones y en <code>validacion.csv</code> (Python). En el script de Python, los valores imposibles se convierten en faltantes, sin borrar la fila.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tabla</th><th>Chequeos</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><b>alumnos</b> (8)</td><td>Nulos en <code>id_familia</code>, <code>edad</code> y <code>asistencia_30d_pct</code>; ids duplicados; asistencia fuera de 0–100; beca fuera de 0–100; edad fuera de 3–18; alumnos de familias inexistentes.</td></tr>
+      <tr><td class="nw"><b>familias</b> (5)</td><td>Nulos en cuota y puntaje; ids duplicados; puntaje fuera de 0–100; cuota ≤ 0 (familias sin alumnos activos o con beca completa).</td></tr>
+      <tr><td class="nw"><b>cuotas</b> (5)</td><td>Nulos en <code>dias_atraso</code>; ids duplicados; atraso negativo; monto adeudado negativo; cuotas de familias inexistentes.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.10 Conclusiones automáticas</h3>
+  <p><code>conclusiones()</code> arma un Markdown con estas secciones: calidad de los datos, hallazgos descriptivos, asociaciones (significativas, no significativas y las que no se pudieron correr), capacidad discriminante (AUC), concentración (Pareto), implicancias y limitaciones. Las implicancias cubren la focalización, los cortes del semáforo comparados con el P25/P75 real y las señales de alerta, separando el puntaje de las variables externas. Si la asistencia resulta asociada, se recuerda que no se usa para cobrar. <b>Regla:</b> cada número sale de un cálculo de la misma corrida, y si un test no se pudo correr, se dice. Se descarga como <code>.md</code> desde la pantalla.</p>
+
+  <h3>11.11 Parámetros</h3>
+  <p>Están en <code>CONFIG</code> (<code>src/morosidad.js</code> y el script de Python). El umbral de morosidad está en <code>stats.js</code>, para que la descriptiva y el análisis usen el mismo.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Parámetro</th><th>Valor</th><th>Efecto</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>UMBRAL_MOROSO_DIAS</code></td><td>5</td><td>Atraso a partir del cual una familia es morosa (estrictamente mayor).</td></tr>
+      <tr><td class="nw"><code>ALFA</code></td><td>0,05</td><td>Nivel de significación sobre el p ajustado.</td></tr>
+      <tr><td class="nw"><code>CORTES_RIESGO</code></td><td>P25 / P75</td><td>Percentiles del puntaje para bajo, medio y alto.</td></tr>
+      <tr><td class="nw"><code>CORTES_ASISTENCIA</code></td><td>90% / 95%</td><td>Categorías de la asistencia promedio de la familia.</td></tr>
+      <tr><td class="nw"><code>PARETO_REFERENCIA</code></td><td>0,80</td><td>Línea de referencia y n de referencia del Pareto.</td></tr>
+      <tr><td class="nw"><code>TOP_PUNTAJE</code></td><td>0,20</td><td>Fracción de familias con mayor puntaje en el Pareto 3.</td></tr>
+      <tr><td class="nw"><code>BOOTSTRAP</code> / <code>MONTE_CARLO</code></td><td>1.000 / 10.000</td><td>Réplicas del IC del AUC y del chi² simulado.</td></tr>
+      <tr><td class="nw"><code>SEMILLA</code></td><td>20261014</td><td>Hace reproducibles el bootstrap y el Monte Carlo (generador mulberry32 en JS, PCG64 en numpy).</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>11.12 Script de Python</h3>
+  <p><code>analisis/analisis_morosidad.py</code> repite el análisis con pandas, numpy, scipy, statsmodels, matplotlib y openpyxl. Tiene una función por bloque (<code>cargar_datos</code>, <code>validar</code>, <code>descriptiva</code>, <code>inferencial</code>, <code>pareto</code>, <code>conclusiones</code>) y un <code>main()</code>.</p>
+  <ul>
+    <li><b>Entrada:</b> los tres CSV de <code>npm run export:dataset</code> (o del botón <i>Exportar dataset para Python</i>), rutas propias, un Excel con hojas <code>alumnos</code>, <code>familias</code> y <code>cuotas</code>, o un único archivo plano. En ese caso las tablas se reconstruyen por <code>id_familia</code>: cada <code>id_cuota</code> es una cuota, cada <code>id_alumno</code> un alumno, y los campos de familia se toman de la primera fila. Sin datos, genera un dataset sintético reproducible. Los nombres reales de las columnas se mapean en <code>CONFIG["COLUMNAS"]</code>.</li>
+    <li><b>Salida</b> en <code>resultados/</code>: <code>validacion.csv</code>, <code>descriptiva.csv</code> y <code>.xlsx</code>, <code>inferencial.csv</code>, <code>roc.png</code>, <code>pareto_{atraso,deuda,puntaje}.png</code> y <code>.csv</code> (200 dpi) y <code>conclusiones.md</code>. Los CSV usan <code>;</code> y coma decimal.</li>
+    <li><b>Equivalencia con la app:</b> los tests deterministas dan lo mismo (verificado en los tests contra valores de scipy). Monte Carlo y bootstrap pueden diferir en el tercer decimal, porque cada lenguaje usa su propio generador.</li>
+    <li>Instrucciones y supuestos: <code>analisis/README.md</code>.</li>
+  </ul>
+
+  <h3>11.13 Limitaciones</h3>
+  <ul>
+    <li><b>Muestra chica:</b> unas 60 familias y muy pocas becadas; los tests tienen poca potencia para efectos moderados.</li>
+    <li><b>Foto estática:</b> se cruzan variables de hoy (puntaje, asistencia de 30 días, cuota) con el atraso de los últimos 12 meses; no hay dimensión temporal ni control de otras variables.</li>
+    <li><b>Circularidad del puntaje actual</b> (11.5).</li>
+    <li><b>Deuda refinanciada:</b> la que pasó a planes de pago no está en el monto adeudado por cuota.</li>
+    <li><b>Familias sin cuotas en la ventana</b> (recién ingresadas) quedan fuera de los análisis a nivel familia; se informa cuántas.</li>
+  </ul>
+
+  <!-- 12 -->
+  <h2 id="api"><span class="n">12</span>Referencia de la API</h2>
   <p>JSON sobre HTTP. Los errores de validación responden con su código (400, 401, 403, 404, 409) y <code>{ "error": "mensaje" }</code>; los errores no previstos, con 500 y un mensaje genérico (el detalle queda en la consola del servidor). El cuerpo máximo es de 1 MB. Los <code>:id</code> son numéricos.</p>
   <h3>Tablero, bandeja e inteligencia</h3>
   <div class="table-wrap"><table><tbody>
@@ -387,7 +575,7 @@ si dias &gt; gracia:
     <tr><td class="nw"><span class="m post">POST</span><code>/api/alumnos/:id/baja</code></td><td>Baja con fecha y motivo.</td></tr>
     <tr><td class="nw"><span class="m post">POST</span><code>/api/alumnos/:id/reincorporar</code></td><td>Reincorpora si hay cupo.</td></tr>
   </tbody></table></div>
-  <h3>Cursos, asistencia y estadísticas</h3>
+  <h3>Cursos, asistencia y estadística</h3>
   <div class="table-wrap"><table><tbody>
     <tr><td class="nw"><span class="m get">GET</span><code>/api/cursos</code></td><td>Cursos con ocupación y asistencia.</td></tr>
     <tr><td class="nw"><span class="m post">POST</span><code>/api/cursos</code></td><td>Crea un curso.</td></tr>
@@ -395,6 +583,8 @@ si dias &gt; gracia:
     <tr><td class="nw"><span class="m put">PUT</span><code>/api/cursos/:id</code></td><td>Turno, docente y cupo.</td></tr>
     <tr><td class="nw"><span class="m post">POST</span><code>/api/cursos/:id/asistencia</code></td><td>Guarda la asistencia del día.</td></tr>
     <tr><td class="nw"><span class="m get">GET</span><code>/api/estadisticas</code></td><td>Estadística descriptiva completa.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/estadisticas/morosidad</code></td><td>Análisis de morosidad: validación, descriptiva, tests, ROC, Pareto y conclusiones.</td></tr>
+    <tr><td class="nw"><span class="m get">GET</span><code>/api/estadisticas/dataset</code></td><td>Alumnos, familias y cuotas sin datos personales, para el script de Python.</td></tr>
   </tbody></table></div>
   <h3>Cuotas, cobros y cobranza</h3>
   <div class="table-wrap"><table><tbody>
@@ -432,14 +622,14 @@ si dias &gt; gracia:
     <tr><td class="nw"><span class="m post">POST</span><code>/api/portal/debito</code></td><td>Adhesión al débito automático.</td></tr>
   </tbody></table></div>
 
-  <!-- 12 -->
-  <h2 id="portal"><span class="n">12</span>Portal de familias y comprobantes</h2>
+  <!-- 13 -->
+  <h2 id="portal"><span class="n">13</span>Portal de familias y comprobantes</h2>
   <p>El portal (<code>/portal</code>) muestra el estado de cuenta, permite pagar online (simulado), ver los recibos, pedir un plan y adherir al débito. La familia entra con su código de portal, que viaja en el encabezado <code>X-Portal-Code</code>. Cada ingreso registra una consulta de saldo (señal del motor de riesgo).</p>
   <p>Comprobantes imprimibles, generados en el servidor: <code>/recibos/:id</code> (recibo o nota de crédito; los anulados se marcan), <code>/estado-cuenta/:familiaId</code> y <code>/libre-deuda/:familiaId</code> (responde 409 si hay deuda vencida).</p>
-  <div class="note warn"><b>Seguridad:</b> en el MVP la administración no tiene login y los comprobantes son accesibles por id. El código de portal es un control mínimo. Ver sección 16.</div>
+  <div class="note warn"><b>Seguridad:</b> en el MVP la administración no tiene login y los comprobantes son accesibles por id. El código de portal es un control mínimo. Ver sección 17.</div>
 
-  <!-- 13 -->
-  <h2 id="config"><span class="n">13</span>Configuración</h2>
+  <!-- 14 -->
+  <h2 id="config"><span class="n">14</span>Configuración</h2>
   <div class="table-wrap"><table>
     <thead><tr><th>Clave</th><th>Por defecto</th><th>Uso y validación</th></tr></thead>
     <tbody>
@@ -456,8 +646,8 @@ si dias &gt; gracia:
     </tbody>
   </table></div>
 
-  <!-- 14 -->
-  <h2 id="demo"><span class="n">14</span>Datos de demostración y demo HTML</h2>
+  <!-- 15 -->
+  <h2 id="demo"><span class="n">15</span>Datos de demostración y demo HTML</h2>
   <h3>Datos de demostración</h3>
   <p><code>seed(db)</code> borra y recarga 64 familias ficticias con un año y medio de historia relativa a la fecha actual. Es determinista: usa un generador pseudoaleatorio con semilla fija (una para la historia de pagos y otra para los datos escolares).</p>
   <ul>
@@ -469,8 +659,8 @@ si dias &gt; gracia:
   <h3>Demo de un solo archivo</h3>
   <p><code>scripts/build-demo.js</code> genera <code>dist/gestion-escolar-demo.html</code>: siembra una base en memoria, precalcula unas 500 respuestas de la API y las incrusta en la página junto con el CSS y el JavaScript. Un reemplazo de <code>window.fetch</code> responde los GET desde esos datos y rechaza las escrituras con un aviso. También genera <code>gestion-escolar-web.html</code>, la variante para publicar como página web (sin descargas de CSV). Después de cambiar la interfaz o la API hay que volver a correr <code>npm run build:demo</code>.</p>
 
-  <!-- 15 -->
-  <h2 id="tests"><span class="n">15</span>Tests</h2>
+  <!-- 16 -->
+  <h2 id="tests"><span class="n">16</span>Tests</h2>
   <p><code>npm test</code> corre <code>test/mvp.test.js</code> con <code>node:test</code>, sobre una base en memoria recién sembrada. Cubren:</p>
   <div class="grid2">
     <div class="box"><ul>
@@ -488,6 +678,8 @@ si dias &gt; gracia:
     </ul></div>
     <div class="box"><ul>
       <li>Estadísticas sobre los datos de demo.</li>
+      <li>Tests inferenciales contra valores de scipy.</li>
+      <li>Análisis de morosidad completo sobre la demo.</li>
       <li>Imputación a la deuda más antigua y saldo a favor.</li>
       <li>Cobro parcial y anulación.</li>
       <li>Conciliación de la cuenta corriente de todas las familias.</li>
@@ -501,8 +693,8 @@ si dias &gt; gracia:
     </ul></div>
   </div>
 
-  <!-- 16 -->
-  <h2 id="produccion"><span class="n">16</span>Pendiente para producción</h2>
+  <!-- 17 -->
+  <h2 id="produccion"><span class="n">17</span>Pendiente para producción</h2>
   <div class="table-wrap"><table>
     <thead><tr><th>Tema</th><th>Situación actual</th><th>Qué hace falta</th></tr></thead>
     <tbody>

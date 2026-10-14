@@ -7,3 +7,8 @@ dist/*
 !dist/gestion-escolar-demo.html
 # Presentación original de la propuesta (se mantiene fuera del repositorio)
 *.pptx
+# Análisis en Python: datos exportados y resultados (se regeneran)
+analisis/datos/
+analisis/resultados/
+resultados/
+__pycache__/

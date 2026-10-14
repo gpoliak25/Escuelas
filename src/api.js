@@ -6,6 +6,7 @@ const { SENALES } = require('./risk');
 const { seed } = require('./seed');
 const E = require('./escolar');
 const { estadisticas } = require('./stats');
+const MO = require('./morosidad');
 const C = require('./cobranzas');
 const ML = require('./ml');
 
@@ -111,9 +112,12 @@ route('PUT', '/api/cursos/:id', ({ db, params, body }) => { E.actualizarCurso(db
 route('GET', '/api/cursos/:id', ({ db, params, query }) => E.detalleCurso(db, params.id, query.get('fecha')));
 route('POST', '/api/cursos/:id/asistencia', ({ db, params, body }) => E.guardarAsistencia(db, params.id, body));
 
-// ---- Estadística descriptiva ----
+// ---- Estadística: descriptiva y análisis de morosidad ----
 
 route('GET', '/api/estadisticas', ({ db }) => estadisticas(db));
+route('GET', '/api/estadisticas/morosidad', ({ db }) => MO.analisisMorosidad(db));
+// Dataset sin datos personales (alumnos, familias, cuotas) para el script analisis/analisis_morosidad.py
+route('GET', '/api/estadisticas/dataset', ({ db }) => MO.exportarDataset(db));
 
 // ---- Cuotas, pagos y planes ----
 

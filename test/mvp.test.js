@@ -162,6 +162,45 @@ test('estadísticas generales sobre los datos de demo', () => {
   assert.ok(s.cobranza.correlacion.r > 0);
 });
 
+// ---- Estadística inferencial y análisis de morosidad ----
+const INF = require('../src/inferencia');
+const MO = require('../src/morosidad');
+const cerca = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} ≠ ${b}`);
+
+test('inferencia: coincide con scipy (Fisher, chi², Spearman, Mann-Whitney, Kruskal-Wallis, Holm)', () => {
+  cerca(INF.fisher2x2([[3, 7], [12, 4]]).p, 0.04261677210930138);
+  const c = INF.chi2Contingencia([[10, 20], [25, 15]]);
+  cerca(c.chi2, 4.725); cerca(c.p, 0.029727183306054655);
+  cerca(INF.chi2Contingencia([[10, 20], [25, 15], [8, 9]]).p, 0.05282768827802503);
+  const s = INF.spearman([1, 2, 2, 3, 5, 8, 8, 9, 10, 0], [0, 0, 1, 4, 3, 9, 7, 7, 12, 1]);
+  cerca(s.rho, 0.8953888539217666); cerca(s.p, 0.0004610009209833453);
+  const a = [0, 0, 0, 3, 5, 8, 12, 30], b = [0, 0, 1, 1, 2, 0, 0, 0, 4, 0];
+  const mw = INF.mannWhitney(a, b);
+  assert.equal(mw.U, 58); cerca(mw.p, 0.0964822219816828);
+  const kw = INF.kruskal([a, b, [5, 6, 7, 0, 0, 40]]);
+  cerca(kw.H, 4.442230109079242); cerca(kw.p, 0.10848807123941412);
+  assert.deepEqual(INF.holm([0.01, 0.04, null, 0.03]).map((p) => p && Math.round(p * 100) / 100), [0.03, 0.06, null, 0.06]);
+  assert.equal(INF.auc([3, 2, 1], [true, false, false]), 1);
+  // Con esperadas < 5 en una tabla 2×2 se usa Fisher
+  assert.equal(INF.cruceCategorico(['a', 'a', 'b', 'b', 'b', 'a'], ['x', 'y', 'x', 'x', 'x', 'y']).test, 'Fisher exacto');
+});
+
+test('análisis de morosidad sobre los datos de demo', () => {
+  const r = MO.analisisMorosidad(fresh());
+  assert.ok(r.n.analizadas > 50 && r.n.morosas > 0 && r.n.morosas < r.n.analizadas);
+  assert.equal(r.inferencial.length, 9);
+  for (const t of r.inferencial.filter((x) => x.p != null)) {
+    assert.ok(t.p_ajustado >= t.p - 1e-12 && t.p_ajustado <= 1);
+    assert.equal(t.significativo, t.p_ajustado < r.config.ALFA);
+  }
+  assert.ok(r.roc.auc > 0.5 && r.roc.ic.li <= r.roc.auc && r.roc.auc <= r.roc.ic.ls);
+  const p = r.pareto.atraso;
+  assert.equal(p.lista.length, r.n.analizadas);
+  assert.ok(p.pct_valor_ref >= 0.8 && (p.n_ref === 1 || p.lista[p.n_ref - 2].pct_acum < 0.8));
+  assert.ok(r.validacion.every((v) => v.ok));
+  assert.match(r.conclusiones, /no implica causalidad/);
+});
+
 // ---- Cobranzas ----
 const C = require('../src/cobranzas');
 

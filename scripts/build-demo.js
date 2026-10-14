@@ -23,7 +23,7 @@ function get(ruta) {
 const data = {};
 const guardar = (ruta) => { data[ruta] = get(ruta); return data[ruta]; };
 
-for (const r of ['/api/dashboard', '/api/acciones', '/api/planes', '/api/riesgo', '/api/config', '/api/estadisticas',
+for (const r of ['/api/dashboard', '/api/acciones', '/api/planes', '/api/riesgo', '/api/config', '/api/estadisticas', '/api/estadisticas/morosidad', '/api/estadisticas/dataset',
   '/api/alumnos', '/api/cursos', '/api/familias/opciones', '/api/caja', '/api/deudores', '/api/debitos', '/api/recargos', '/api/ml']) guardar(r);
 
 // Familias: la lista se filtra en el navegador (activas e inactivas por separado)
@@ -112,8 +112,8 @@ reemplazar('<title>Gestión escolar · Morosidad</title>', '<title>Gestión esco
 reemplazar('<link rel="stylesheet" href="/styles.css">', `<style>\n${css}\n</style>`);
 reemplazar('<body>', `<body>\n  <div class="demo-banner" role="note">Demo con datos ficticios al ${hoy.split('-').reverse().join('/')} · se puede navegar todo, pero los cambios no se guardan</div>`);
 reemplazar('<a href="/portal" target="_blank" rel="noopener">Abrir portal de familias ↗</a>', '<span>Portal de familias: disponible con <code>npm start</code></span>');
-reemplazar('<script src="/app.js"></script>\n  <script src="/escolar.js"></script>\n  <script src="/cobranzas.js"></script>\n  <script src="/ml.js"></script>',
-  `<script type="application/json" id="demo-data">${json}</script>\n  <script>${mock}</script>\n  <script>\n${js('app.js')}\n</script>\n  <script>\n${js('escolar.js')}\n</script>\n  <script>\n${js('cobranzas.js')}\n</script>\n  <script>\n${js('ml.js')}\n</script>`);
+reemplazar('<script src="/app.js"></script>\n  <script src="/escolar.js"></script>\n  <script src="/cobranzas.js"></script>\n  <script src="/ml.js"></script>\n  <script src="/estadistica.js"></script>',
+  `<script type="application/json" id="demo-data">${json}</script>\n  <script>${mock}</script>\n  <script>\n${js('app.js')}\n</script>\n  <script>\n${js('escolar.js')}\n</script>\n  <script>\n${js('cobranzas.js')}\n</script>\n  <script>\n${js('ml.js')}\n</script>\n  <script>\n${js('estadistica.js')}\n</script>`);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, html);

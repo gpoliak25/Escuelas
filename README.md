@@ -9,7 +9,8 @@ Requiere **Node.js 22.13 o superior** (usa el SQLite integrado de Node: no hay d
 ```bash
 npm start          # http://localhost:3000  (administración)
                    # http://localhost:3000/portal  (portal de familias)
-npm test           # 22 tests: riesgo, ML, cobros, cuenta corriente, recargos, promesas, débitos, escolar
+npm test           # 24 tests: riesgo, ML, cobros, cuenta corriente, recargos, promesas, débitos, escolar, estadística
+npm run export:dataset   # exporta alumnos/familias/cuotas (sin datos personales) para el análisis en Python
 npm run seed       # vuelve a cargar los datos de demostración
 ```
 
@@ -64,7 +65,17 @@ Pantalla **Inteligencia (ML)**, con los ocho aportes de la presentación. Todo s
 |---|---|
 | **Alumnos** | Listado con filtros (curso, turno, género, estado) y exportación a CSV. **Alta de alumno** con DNI (único), fecha de nacimiento (sugiere el grado), curso con control de cupo, fecha de ingreso y beca; la familia se elige de las existentes o se crea en el mismo paso. Legajo con datos personales, escolaridad, hermanos y asistencia. **Pase de sección**, **baja** (fecha y motivo) y **reincorporación**. |
 | **Cursos y asistencia** | Cursos por grado y sección con turno, docente y cupo (ocupación y vacantes). Toma de asistencia diaria por curso (presente, ausente, tarde y falta justificada), corregible. La asistencia **no** se usa para el puntaje de cobranza. |
-| **Estadísticas** | Estadística descriptiva: tabla resumen (n, media, mediana, moda, desvío, coeficiente de variación, mín., P25, P75, máx., asimetría) de edad, hijos por familia, cuota, beca, días de atraso, puntaje de riesgo y asistencia; tablas de frecuencia absoluta/relativa/acumulada; histogramas; medidas por grupo (edad por grado, atraso por medio de pago, asistencia por grado); correlación de Pearson entre puntaje y atraso real. Todas las tablas se descargan en CSV. |
+
+### Estadística
+
+Sección propia del menú, separada de la gestión escolar.
+
+| Pantalla | Qué hace |
+|---|---|
+| **Descriptiva** | Tabla resumen (n, media, mediana, moda, desvío, CV, mín., P25, P75, máx., asimetría) de edad, beca, asistencia, hijos por familia, cuota, puntaje de riesgo y días de atraso, cada variable con su **unidad de análisis** (alumnos, familias o cuotas) y su propio n. Marca las variables con asimetría mayor a 1 en valor absoluto y recomienda leer mediana y percentiles. % de cuotas con atraso y con atraso mayor al umbral de morosidad. Frecuencias, histogramas, medidas por grupo y correlación de Pearson. Todo se descarga en CSV. |
+| **Análisis de morosidad** | A nivel familia (morosa = alguna cuota con más de 5 días de atraso): validación de datos; chi cuadrado / Fisher exacto / Monte Carlo con V de Cramér, Spearman, Mann-Whitney y Kruskal-Wallis con tamaño del efecto, todos con corrección de Holm; curva ROC y AUC del puntaje con IC por bootstrap; tres Pareto (atraso acumulado, deuda y concentración según el puntaje) con lista priorizada; conclusiones automáticas descargables en Markdown. |
+
+El mismo análisis existe como script de Python en [analisis/](analisis/README.md), que lee el dataset exportado (o uno sintético) y genera tablas, gráficos PNG y `conclusiones.md`.
 
 **Fecha simulada** (en *Configuración*): permite ver el sistema "como si hoy fuera" otra fecha, útil para demos.
 
@@ -81,9 +92,12 @@ src/documentos.js  recibo, estado de cuenta y libre deuda imprimibles
 src/api.js         rutas de la API
 src/escolar.js     alumnos, cursos y asistencia
 src/stats.js       estadística descriptiva
+src/inferencia.js  tests estadísticos sin dependencias (chi², Fisher, Spearman, Mann-Whitney, Kruskal-Wallis, Holm, ROC)
+src/morosidad.js   análisis de morosidad: dataset, validación, cruces, ROC, Pareto y conclusiones
 src/ml.js          inteligencia de cobranza (modelos, segmentos, proyección, anomalías, escenarios)
 src/seed.js        datos de demostración
-public/            administración (index.html, app.js, escolar.js, cobranzas.js, ml.js) y portal (portal.html, portal.js)
+public/            administración (index.html, app.js, escolar.js, cobranzas.js, ml.js, estadistica.js) y portal (portal.html, portal.js)
+analisis/          script de Python con el mismo análisis de morosidad
 test/              tests con node:test
 ```
 
