@@ -193,19 +193,31 @@ function mlBajas(el, d) {
 }
 
 // ---------- 8. Simulación de escenarios ----------
-const supuestos = { puntual: 0.5, tardio: 1.5, transitoria: 4, cronico: 3, plan: 40 };
+const supuestos = { puntual: 0.5, tardio: 1.5, transitoria: 4, cronico: 3, plan: 40, migracion: 2 };
 const escenario = { aumento: 10, tramos: '1', descuento: 0, adhesion: 30, plan: false };
+const ORDEN_SEG = ['puntual', 'tardio', 'transitoria', 'cronico'];
 
 function simular(segs, e, s) {
   const meses = 10;
-  const res = { base: { fact: 0, cobro: 0, mora: 0, desc: 0 }, esc: { fact: 0, cobro: 0, mora: 0, desc: 0 }, segs: [] };
-  for (const g of segs) {
+  const a = e.aumento / 100;
+  const suave = e.tramos === '2' ? 0.6 : 1; // en dos tramos el impacto sobre el comportamiento es menor
+  // Todo junto: el aumento rige las 10 cuotas. En dos tramos: la mitad de marzo a julio y el total de agosto a diciembre.
+  const factor = e.tramos === '2' ? 5 * (1 + a / 2) + 5 * (1 + a) : meses * (1 + a);
+  // Migración: por cada 10% de aumento, una parte de las familias de cada segmento pasa al siguiente
+  // (puntual → tardío → transitoria → crónico) y se lleva su cuota. Sólo se mueven las familias de hoy, un escalón.
+  const m = Math.min(1, (s.migracion / 100) * (e.aumento / 10) * suave);
+  const lista = ORDEN_SEG.map((k) => segs.find((g) => g.key === k)).filter(Boolean);
+  const fam = lista.map((g) => g.familias), men = lista.map((g) => g.mensual);
+  for (let i = 0; i < lista.length - 1; i++) {
+    fam[i] -= lista[i].familias * m; fam[i + 1] += lista[i].familias * m;
+    men[i] -= lista[i].mensual * m; men[i + 1] += lista[i].mensual * m;
+  }
+  const res = { base: { fact: 0, cobro: 0, mora: 0, desc: 0 }, esc: { fact: 0, cobro: 0, mora: 0, desc: 0 }, segs: [], migracion: m };
+  lista.forEach((g, i) => {
     const fact0 = g.mensual * meses;
     const imp0 = g.tarde;
-    // Todo junto: el aumento rige las 10 cuotas. En dos tramos: la mitad de marzo a julio y el total de agosto a diciembre.
-    const a = e.aumento / 100;
-    const fact1 = e.tramos === '2' ? g.mensual * (5 * (1 + a / 2) + 5 * (1 + a)) : fact0 * (1 + a);
-    let imp1 = Math.min(0.95, imp0 + (s[g.key] / 100) * (e.aumento / 10) * (e.tramos === '2' ? 0.6 : 1));
+    const fact1 = men[i] * factor;
+    let imp1 = Math.min(0.95, imp0 + (s[g.key] / 100) * (e.aumento / 10) * suave);
     if (e.plan && g.key === 'transitoria') imp1 *= 1 - s.plan / 100;
     // Descuento por pago anticipado: sólo puntuales y tardíos; quienes adhieren pagan a término
     const adh = ['puntual', 'tardio'].includes(g.key) && e.descuento > 0 ? e.adhesion / 100 : 0;
@@ -213,9 +225,8 @@ function simular(segs, e, s) {
     imp1 *= 1 - adh;
     res.base.fact += fact0; res.base.mora += fact0 * imp0; res.base.cobro += fact0 * (1 - imp0);
     res.esc.fact += fact1; res.esc.mora += fact1 * imp1; res.esc.desc += desc; res.esc.cobro += fact1 * (1 - imp1) - desc;
-    // Las familias de cada segmento no cambian; sí cuántas se espera que queden con impago (familias × % de impago)
-    res.segs.push({ ...g, imp0, imp1, fam0: g.familias * imp0, fam1: g.familias * imp1, cobro0: fact0 * (1 - imp0), cobro1: fact1 * (1 - imp1) - desc });
-  }
+    res.segs.push({ ...g, fam1: fam[i], imp0, imp1, famImp0: g.familias * imp0, famImp1: fam[i] * imp1, cobro0: fact0 * (1 - imp0), cobro1: fact1 * (1 - imp1) - desc });
+  });
   return res;
 }
 
@@ -224,6 +235,7 @@ function mlEscenarios(el, d) {
   const pinta = () => {
     const r = simular(segs, escenario, supuestos);
     const mora = (x) => (x.fact ? x.mora / x.fact : 0);
+    const dif = (v) => (Math.abs(v) < 0.05 ? '' : h` <span class="small muted">${v > 0 ? '+' : '−'}${nf(Math.abs(v), 1)}</span>`);
     $('#sim-res').innerHTML = String(h`
       <div class="grid g-4">
         <div class="card kpi"><span class="label">Facturación anual</span><span class="value">${moneyK(r.esc.fact)}</span><span class="sub">hoy ${moneyK(r.base.fact)}</span></div>
@@ -233,12 +245,12 @@ function mlEscenarios(el, d) {
       </div>
       <div class="card mt"><div class="card-head"><div><h2>Impacto por segmento</h2></div></div>
         <div class="table-wrap"><table><thead><tr><th>Segmento</th><th class="r">Familias</th><th class="r">Impago hoy</th><th class="r">Impago esperado</th><th class="r">Familias con impago hoy</th><th class="r">Familias con impago esperado</th><th class="r">Cobro hoy</th><th class="r">Cobro esperado</th></tr></thead><tbody>
-          ${r.segs.map((g) => h`<tr><td>${segPill(g.key)}</td><td class="r num">${g.familias}</td><td class="r num">${pct(g.imp0, 1)}</td><td class="r num">${pct(g.imp1, 1)}</td>
-            <td class="r num">${nf(g.fam0, 1)}</td><td class="r num"><b>${nf(g.fam1, 1)}</b></td><td class="r num">${money(g.cobro0)}</td><td class="r num">${money(g.cobro1)}</td></tr>`)}
-          <tr class="total"><td>Total</td><td class="r num">${r.segs.reduce((s, g) => s + g.familias, 0)}</td><td class="r num">${pct(mora(r.base), 1)}</td><td class="r num">${pct(mora(r.esc), 1)}</td>
-            <td class="r num">${nf(r.segs.reduce((s, g) => s + g.fam0, 0), 1)}</td><td class="r num"><b>${nf(r.segs.reduce((s, g) => s + g.fam1, 0), 1)}</b></td><td class="r num">${money(r.base.cobro)}</td><td class="r num">${money(r.esc.cobro)}</td></tr>
+          ${r.segs.map((g) => h`<tr><td>${segPill(g.key)}</td><td class="r num"><b>${nf(g.fam1, 1)}</b>${dif(g.fam1 - g.familias)}<div class="small muted">hoy ${g.familias}</div></td><td class="r num">${pct(g.imp0, 1)}</td><td class="r num">${pct(g.imp1, 1)}</td>
+            <td class="r num">${nf(g.famImp0, 1)}</td><td class="r num"><b>${nf(g.famImp1, 1)}</b></td><td class="r num">${money(g.cobro0)}</td><td class="r num">${money(g.cobro1)}</td></tr>`)}
+          <tr class="total"><td>Total</td><td class="r num">${nf(r.segs.reduce((s, g) => s + g.fam1, 0), 1)}</td><td class="r num">${pct(mora(r.base), 1)}</td><td class="r num">${pct(mora(r.esc), 1)}</td>
+            <td class="r num">${nf(r.segs.reduce((s, g) => s + g.famImp0, 0), 1)}</td><td class="r num"><b>${nf(r.segs.reduce((s, g) => s + g.famImp1, 0), 1)}</b></td><td class="r num">${money(r.base.cobro)}</td><td class="r num">${money(r.esc.cobro)}</td></tr>
         </tbody></table></div>
-        <p class="small muted">Las familias de cada segmento son las de hoy: el simulador no las mueve de segmento. "Familias con impago" es el equivalente esperado (familias × % de impago), por eso puede tener decimales.</p></div>`);
+        <p class="small muted">La columna Familias muestra el escenario (debajo, cuántas hay hoy): con el aumento, el ${nf(r.migracion * 100, 1)}% de las familias de cada segmento pasa al siguiente (puntual → tardío → transitoria → crónico), según el supuesto de migración. "Familias con impago" es familias × % de impago. Son valores esperados, por eso pueden tener decimales.</p></div>`);
   };
   el.innerHTML = String(h`
     <div class="grid g-21">
@@ -256,6 +268,7 @@ function mlEscenarios(el, d) {
         <div class="card-head"><div><h2>Supuestos</h2><p>A calibrar con la respuesta real a aumentos anteriores</p></div></div>
         <p class="small" style="margin-top:0">Puntos de impago que suma cada 10% de aumento:</p>
         <div class="form-grid">${['puntual', 'tardio', 'transitoria', 'cronico'].map((k) => h`<label class="field">${SEG_LABEL[k]}<input type="number" class="s-sup" data-k="${k}" min="0" max="20" step="0.5" value="${supuestos[k]}"></label>`)}
+          <label class="field full">Familias que pasan al segmento siguiente por cada 10% de aumento (%)<input type="number" class="s-sup" data-k="migracion" min="0" max="50" step="0.5" value="${supuestos.migracion}"></label>
           <label class="field full">Reducción del impago con plan temprano (%)<input type="number" class="s-sup" data-k="plan" min="0" max="100" step="5" value="${supuestos.plan}"></label></div>
       </div>
     </div>
